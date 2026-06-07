@@ -718,12 +718,28 @@ Skor hasil: <strong style="color:#C8D0E0">0–1</strong> (1 = identik).
 </div>
 """, unsafe_allow_html=True)
 
-def get_mfcc_sequence(file_path, sr=16000, n_mfcc=13, normalize=True):
+def get_mfcc_sequence(file_path, sr=16000, n_mfcc=13, normalize=True, apply_noise_reduction=True):
     try:
         y, sr = librosa.load(file_path, sr=sr)
         if len(y) < sr * 0.5:
             st.warning("Rekaman terlalu pendek (minimal 0.5 detik).")
             return None
+        
+        # ─── FITUR TAMBAHAN: NOISE REDUCTION (SPECTRAL SUBTRACTION) ───
+        if apply_noise_reduction:
+            # Transformasi audio ke domain frekuensi (STFT)
+            stft = librosa.stft(y)
+            stft_db = librosa.amplitude_to_db(np.abs(stft), ref=np.max)
+            
+            # Membuat masker bising: Frekuensi di bawah -40 dB (desis/dengung latar belakang) akan diredam
+            # Nilai -40 dB ideal untuk menyaring bising ruangan tanpa merusak karakter suara utama
+            mask = stft_db > -40 
+            stft_clean = stft * mask
+            
+            # Mengembalikan audio bersih ke domain waktu
+            y = librosa.istft(stft_clean)
+            
+        # Ekstraksi fitur MFCC seperti biasa dari audio yang sudah bersih
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
         if normalize:
             mean = np.mean(mfcc, axis=1, keepdims=True)
@@ -733,7 +749,6 @@ def get_mfcc_sequence(file_path, sr=16000, n_mfcc=13, normalize=True):
     except Exception as e:
         st.error(f"Gagal memuat {file_path}: {e}")
         return None
-
 def compute_similarity(seq_ref, seq_test):
     if seq_ref is None or seq_test is None:
         return 0.0
