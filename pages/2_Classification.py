@@ -668,7 +668,10 @@ if run_btn:
             reducer_ml = PCA(n_components=n_components_ml)
         elif method_ml == "t-SNE":
             perp = min(30, len(X_norm) - 1)
-            reducer_ml = TSNE(n_components=n_components_ml, perplexity=perp, random_state=42)
+            actual_comp = min(n_components_ml, 3) # t-SNE tidak bisa dimensi tinggi
+            if n_components_ml > 3:
+                st.warning("t-SNE hanya mendukung hingga 3 dimensi. Menggunakan 3 komponen.")
+            reducer_ml = TSNE(n_components=actual_comp, perplexity=perp, random_state=42)
         else:
             reducer_ml = PCA(n_components=n_components_ml)
         X_ml = reducer_ml.fit_transform(X_norm)
