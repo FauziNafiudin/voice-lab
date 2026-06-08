@@ -444,9 +444,9 @@ fig_synth.tight_layout()
 st.pyplot(fig_synth)
 st.caption("Gelombang ini sangat halus dan periodik, berbeda dengan suara alami yang lebih kompleks.")
 
-with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
-    cat_file = "Cat.mp3"
-    if os.path.exists(cat_file):
+cat_file = "Cat.mp3"
+if os.path.exists(cat_file):
+    with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
         st.audio(cat_file, format="audio/mpeg")
         st.caption("▶️ Dengarkan suara kucing asli.")
         y_cat, sr_cat = librosa.load(cat_file, sr=16000)
@@ -463,9 +463,9 @@ with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
         fig_cat.tight_layout()
         st.pyplot(fig_cat)
         st.caption(f"Durasi total: {duration:.2f} detik. Bentuknya lebih acak dibanding sinyal sintetik.")
-    else:
-        st.warning(f"File {cat_file} tidak ditemukan.")
-        st.info("Pastikan file Cat.mp3 berada di folder yang sama dengan aplikasi ini.")
+else:
+    st.warning(f"File {cat_file} tidak ditemukan.")
+    st.info("Pastikan file Cat.mp3 berada di folder yang sama dengan aplikasi ini.")
 
 # ========== BAGIAN 2: BAGAIMANA KOMPUTER PROSES SUARA ==========
 st.header("Bagaimana Komputer Memproses Suara?")
@@ -490,7 +490,6 @@ with c6:
     st.markdown('<div class="step-card"><div class="step-num">STEP 06</div><div class="step-title">MFCC</div><div class="step-desc">Fitur ringkas yang meniru persepsi pendengaran manusia</div></div>', unsafe_allow_html=True)
 
 # ========== LOAD FILE SUARA KUCING ==========
-cat_file = "Cat.mp3"
 if os.path.exists(cat_file):
     y_full, sr = librosa.load(cat_file, sr=16000)
     durasi_total = len(y_full) / sr
@@ -663,262 +662,4 @@ ax9.set_title("Spektrogram glissando (frekuensi naik 200 → 1000 Hz)")
 plt.colorbar(img, ax=ax9, format="%+2.0f dB")
 fig9.tight_layout()
 st.pyplot(fig9)
-st.caption("Garis miring dari frekuensi rendah ke tinggi — itulah glissando.")
-
-if cat_available:
-    with st.expander("🐱 Spektrogram suara kucing (2 detik pertama)"):
-        D_cat = librosa.amplitude_to_db(np.abs(librosa.stft(y_panjang)), ref=np.max)
-        fig10, ax10 = plt.subplots(figsize=(9, 3))
-        img = librosa.display.specshow(D_cat, sr=sr, x_axis='time', y_axis='hz', ax=ax10, cmap='magma')
-        ax10.set_title("Spektrogram Cat.mp3")
-        plt.colorbar(img, ax=ax10, format="%+2.0f dB")
-        fig10.tight_layout()
-        st.pyplot(fig10)
-        st.caption("Distribusi frekuensi berubah seiring waktu — kompleks dan dinamis.")
-
-# ========== LANGKAH 6: MFCC ==========
-st.subheader("6 — MFCC (Mel-Frequency Cepstral Coefficients)")
-st.markdown('<span class="badge">Feature Extraction</span><span class="badge blue">13 Koefisien</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#00A050">MFCC</strong> adalah fitur ringkas yang meniru persepsi pendengaran manusia. 13–20 koefisien per frame — inilah yang dipakai AI untuk pengenalan suara.</p>', unsafe_allow_html=True)
-
-mfcc_gliss = librosa.feature.mfcc(y=y_gliss, sr=16000, n_mfcc=13)
-fig11, ax11 = plt.subplots(figsize=(9, 3))
-img = librosa.display.specshow(mfcc_gliss, sr=16000, x_axis='time', ax=ax11, cmap='viridis')
-ax11.set_title("MFCC (13 koefisien) dari glissando")
-plt.colorbar(img, ax=ax11)
-fig11.tight_layout()
-st.pyplot(fig11)
-st.caption("Setiap baris = satu koefisien MFCC yang menunjukkan aspek berbeda dari spektrum.")
-
-if cat_available:
-    with st.expander("🐱 MFCC dari suara kucing (2 detik pertama)"):
-        mfcc_cat = librosa.feature.mfcc(y=y_panjang, sr=sr, n_mfcc=13)
-        fig12, ax12 = plt.subplots(figsize=(9, 3))
-        img = librosa.display.specshow(mfcc_cat, sr=sr, x_axis='time', ax=ax12, cmap='viridis')
-        ax12.set_title("MFCC suara kucing")
-        plt.colorbar(img, ax=ax12)
-        fig12.tight_layout()
-        st.pyplot(fig12)
-        st.caption("MFCC inilah yang dibandingkan untuk mengenali atau mencocokkan suara.")
-
-# ========== BAGIAN 3: VOICE SIMILARITY CHALLENGE ==========
-st.header("Pengenalan Suara — Voice Similarity Challenge")
-
-st.markdown("""
-<div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.15); border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.5rem">
-<p style="color:#556070; margin:0; font-size:0.92rem; line-height:1.8">
-Untuk membandingkan dua suara, sistem menggunakan
-<strong style="color:#00A050">Resemblyzer (GE2E Speaker Embeddings)</strong> — model pretrained dari Google
-yang mengubah audio menjadi vektor 256 dimensi, lalu dihitung dengan
-<strong style="color:#00A050">Cosine Similarity</strong>.
-Skor hasil: <strong style="color:#1A1A2E">0–1</strong> (1 = identik).
-</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ========== LOAD ENCODER (cached) ==========
-@st.cache_resource
-def load_encoder():
-    return VoiceEncoder()
-
-encoder = load_encoder()
-
-def get_embedding(file_path):
-    try:
-        wav = preprocess_wav(Path(file_path))
-        if len(wav) < 16000 * 0.5:
-            st.warning("Rekaman terlalu pendek (minimal 0.5 detik).")
-            return None
-        embedding = encoder.embed_utterance(wav)
-        return embedding
-    except Exception as e:
-        st.error(f"Gagal memproses {file_path}: {e}")
-        return None
-
-def compute_similarity(emb_ref, emb_test):
-    if emb_ref is None or emb_test is None:
-        return 0.0
-    similarity = np.dot(emb_ref, emb_test) / (
-        np.linalg.norm(emb_ref) * np.linalg.norm(emb_test)
-    )
-    # Rescale dari [-1,1] ke [0,1]
-    return float((similarity + 1) / 2)
-
-cat1_path = "Cat.mp3"
-cat2_path = "Cat2.mp3"
-
-if not os.path.exists(cat1_path):
-    st.error(f"File {cat1_path} tidak ditemukan. Letakkan Cat.mp3 di folder yang sama.")
-    st.stop()
-
-cat2_available = os.path.exists(cat2_path)
-seq_ref = get_embedding(cat1_path)
-if seq_ref is None:
-    st.error("Gagal memproses Cat.mp3.")
-    st.stop()
-
-st.markdown("---")
-st.markdown("**🎵 Perbandingan Suara Kucing Asli**")
-
-# Membagi layout menjadi dua kolom yang sama besar
-col_cat1, col_cat2 = st.columns(2)
-
-with col_cat1:
-    st.markdown("**Kucing 1 (Cat.mp3)**")
-    st.audio(cat1_path, format="audio/mpeg")
-    st.caption("Suara referensi / patokan.")
-
-with col_cat2:
-    if cat2_available:
-        st.markdown("**Kucing 2 (Cat2.mp3)**")
-        st.audio(cat2_path, format="audio/mpeg")
-        st.caption("Suara kucing pembanding.")
-    else:
-        st.info("File Cat2.mp3 tidak tersedia.")
-
-# Menampilkan hasil skor di tengah bawah
-if cat2_available:
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    seq_cat2 = get_embedding(cat2_path)
-    if seq_cat2 is not None:
-        sim_cat2 = compute_similarity(seq_ref, seq_cat2)
-        
-        # Membuat 3 kolom, menggunakan kolom tengah yang lebih besar agar terpusat
-        _, col_hasil_tengah, _ = st.columns([1, 2, 1])
-        
-        with col_hasil_tengah:
-            st.metric("Skor Kemiripan (Resemblyzer)", f"{sim_cat2:.3f}")
-            
-            # Menampilkan interpretasi dengan warna alert sesuai skor
-            if sim_cat2 > 0.6:
-                st.success("✅ **Sangat mirip** — mungkin berasal dari kucing yang sama.")
-            elif sim_cat2 > 0.4:
-                st.info("🔊 **Cukup mirip**, namun memiliki perbedaan karakter.")
-            else:
-                st.warning("⚠️ **Berbeda** — kemungkinan ekspresi atau jenis kucing yang berbeda.")
-
-# ========== TANTANGAN ==========
-st.subheader("🎙️ Tantangan: Siapa yang Lebih Mirip Kucing?")
-st.markdown("""
-<div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.12); border-radius:12px; padding:1rem 1.4rem; margin-bottom:1.2rem">
-<p style="color:#556070; margin:0; font-size:0.88rem; line-height:1.7">
-Rekam dua suara berbeda. Sistem akan membandingkan keduanya dengan <strong style="color:#00A050">Cat.mp3</strong>
-menggunakan <strong style="color:#00A050">Resemblyzer + Cosine Similarity</strong>, lalu menentukan siapa yang lebih mirip kucing!
-</p>
-</div>
-""", unsafe_allow_html=True)
-
-# --- FUNGSI FRAGMENT UNTUK MENGISOLASI LOADING ---
-@st.fragment
-def rekaman_challenge_section():
-    if "human1_audio" not in st.session_state: st.session_state.human1_audio = None
-    if "human2_audio" not in st.session_state: st.session_state.human2_audio = None
-    if "human1_processed" not in st.session_state: st.session_state.human1_processed = False
-    if "human2_processed" not in st.session_state: st.session_state.human2_processed = False
-
-    col_h1, col_h2 = st.columns(2)
-
-    with col_h1:
-        st.markdown("**👤 Manusia 1**")
-        audio1 = st.audio_input("Rekam suara tiruan kucing (Manusia 1)", key="human1_input")
-        if audio1 is not None:
-            # Tambahkan spinner agar loadingnya lokal di sini saja
-            with st.spinner("⏳ Memproses suara Manusia 1..."):
-                temp1 = "temp_human1.wav"
-                with open(temp1, "wb") as f:
-                    f.write(audio1.getbuffer())
-                    
-                seq1 = get_embedding(temp1) 
-                
-                if seq1 is not None:
-                    sim1 = compute_similarity(seq_ref, seq1)
-                    st.session_state.human1_audio = (temp1, seq1, sim1)
-                    st.session_state.human1_processed = True
-                    st.metric("Skor vs Cat.mp3", f"{sim1:.3f}")
-                else:
-                    st.error("Rekaman terlalu pendek atau gagal.")
-                    if os.path.exists(temp1): os.remove(temp1)
-        elif st.session_state.human1_processed:
-            _, _, sim1 = st.session_state.human1_audio
-            st.metric("Skor vs Cat.mp3", f"{sim1:.3f}")
-
-    with col_h2:
-        st.markdown("**👤 Manusia 2**")
-        audio2 = st.audio_input("Rekam suara tiruan kucing (Manusia 2)", key="human2_input")
-        if audio2 is not None:
-            # Tambahkan spinner agar loadingnya lokal di sini saja
-            with st.spinner("⏳ Memproses suara Manusia 2..."):
-                temp2 = "temp_human2.wav"
-                with open(temp2, "wb") as f:
-                    f.write(audio2.getbuffer())
-                    
-                seq2 = get_embedding(temp2)
-                
-                if seq2 is not None:
-                    sim2 = compute_similarity(seq_ref, seq2)
-                    st.session_state.human2_audio = (temp2, seq2, sim2)
-                    st.session_state.human2_processed = True
-                    st.metric("Skor vs Cat.mp3", f"{sim2:.3f}")
-                else:
-                    st.error("Rekaman terlalu pendek atau gagal.")
-                    if os.path.exists(temp2): os.remove(temp2)
-        elif st.session_state.human2_processed:
-            _, _, sim2 = st.session_state.human2_audio
-            st.metric("Skor vs Cat.mp3", f"{sim2:.3f}")
-
-    # --- TOMBOL RESET DI TENGAH BAWAH REKAMAN ---
-    if st.session_state.human1_processed or st.session_state.human2_processed:
-        st.markdown("<br>", unsafe_allow_html=True)
-        col_space1, col_btn, col_space3 = st.columns([1, 1, 1])
-        with col_btn:
-            if st.button("🔄 Reset Rekaman", key="reset_human", use_container_width=True):
-                for key in ['human1_audio', 'human2_audio']:
-                    if st.session_state[key]:
-                        try: os.remove(st.session_state[key][0])
-                        except: pass
-                st.session_state.human1_audio = None
-                st.session_state.human2_audio = None
-                st.session_state.human1_processed = False
-                st.session_state.human2_processed = False
-                st.rerun()
-
-# Jalankan fungsi fragment yang sudah kita buat
-rekaman_challenge_section()
-
-
-# ========== EXPLORE SECTION ==========
-st.markdown("---")
-st.markdown('<div class="section-pill">🧪 Explore</div>', unsafe_allow_html=True)
-st.header("Jelajahi Fitur Voice Lab")
-st.markdown('<p style="color:#556070; font-size:0.9rem; margin-bottom:1.2rem">Setelah paham dasarnya, coba fitur-fitur seru berikut!</p>', unsafe_allow_html=True)
-
-colA, colB, colC = st.columns(3)
-with colA:
-    st.page_link(
-        "pages/1_Meme_Challenge.py",
-        label="🤣 Meme Voice Challenge",
-        help="Tonton video meme, rekam suaramu, dan bandingkan kemiripannya!",
-        use_container_width=True
-    )
-    st.caption("✅ Sudah tersedia")
-with colB:
-    st.page_link(
-        "pages/2_Classification.py",
-        label="📊 Klasifikasi Suara 3D",
-        help="Visualisasi dataset ESC-50 dalam ruang 3D, klik titik untuk mendengar suara.",
-        use_container_width=True
-    )
-    st.caption("🆓 Eksplorasi 50 kelas suara")
-with colC:
-    st.button("🏎️ F1 Qualifying Voice (Segera)", disabled=True, use_container_width=True)
-    st.caption("🚧 Segera hadir")
-
-st.markdown("---")
-st.markdown("""
-<div style="text-align:center; padding:1rem 0 0.5rem">
-    <span style="font-family:'Space Mono',monospace; font-size:0.62rem; color:#AABBCC; letter-spacing:3px; text-transform:uppercase">
-        Voice Lab — Audio Processing Playground
-    </span>
-</div>
-""", unsafe_allow_html=True)
+st.caption("Garis miring dari frekuensi rendah ke tinggi
