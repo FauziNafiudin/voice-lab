@@ -474,25 +474,32 @@ if "sample_idx" not in st.session_state:
     st.session_state.sample_idx = 0
 
 st.subheader("Step 1 — Sampling & Waveform")
-col_info, col_rld = st.columns([5, 1])
-with col_rld:
-    if st.button("🔄 Ganti Contoh", key="reload_sample"):
-        st.session_state.sample_idx = random.randint(0, len(filtered_audio) - 1)
-        st.rerun()
 
+# 1. Ambil data file contoh terlebih dahulu
 sidx = st.session_state.sample_idx % len(filtered_audio)
 sample_path = filtered_audio[sidx]
 sample_fname = filtered_meta.iloc[sidx]['filename']
 sample_cat = filtered_meta.iloc[sidx]['category']
 
-st.markdown(f"""
-<div class="card" style="margin-bottom:.8rem">
-    <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#3A4A60;letter-spacing:1.5px;text-transform:uppercase">File Contoh</span><br>
-    <span style="color:#C8D0E0;font-weight:700">{sample_fname}</span>
-    <span style="margin-left:.8rem;background:rgba(0,230,120,.08);border:1px solid rgba(0,230,120,.2);
-    color:#00E676;font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:.15rem .5rem;border-radius:4px">{sample_cat}</span>
-</div>
-""", unsafe_allow_html=True)
+# 2. Buat kolom untuk menyejajarkan kotak info dan tombol
+col_card, col_btn = st.columns([5, 2])
+
+with col_card:
+    st.markdown(f"""
+    <div class="card" style="margin-bottom:.8rem; padding: 0.8rem 1.2rem;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#3A4A60;letter-spacing:1.5px;text-transform:uppercase">File Contoh</span><br>
+        <span style="color:#C8D0E0;font-weight:700;font-size:1.1rem">{sample_fname}</span>
+        <span style="margin-left:.8rem;background:rgba(0,230,120,.08);border:1px solid rgba(0,230,120,.2);
+        color:#00E676;font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:.15rem .5rem;border-radius:4px">{sample_cat}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_btn:
+    # Menambahkan spasi kosong agar tombol turun ke tengah, sejajar dengan kotak info
+    st.markdown("<div style='margin-top: 1.1rem;'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Ganti Contoh", key="reload_sample", use_container_width=True):
+        st.session_state.sample_idx = random.randint(0, len(filtered_audio) - 1)
+        st.rerun()
 
 try:
     y_sample, sr_sample = librosa.load(sample_path, sr=sample_rate, duration=duration)
