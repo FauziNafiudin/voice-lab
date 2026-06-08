@@ -4,7 +4,8 @@ import librosa
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
-from resemblyzer import VoiceEncoder, preprocess_wav
+from scipy.spatial.distance import euclidean
+from fastdtw import fastdtw
 
 # ========== KONFIGURASI HALAMAN ==========
 st.set_page_config(
@@ -16,16 +17,13 @@ st.set_page_config(
 # ========== CUSTOM CSS PREMIUM AUDIO STUDIO — WHITE THEME ==========
 st.markdown("""
 <style>
-    /* ====== IMPORT COMFORTAA ====== */
     @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap');
 
-    /* ====== BASE ====== */
     .stApp {
         background: #FFFFFF;
         color: #1A1A2E;
         font-family: 'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-
     .stApp::after {
         content: '';
         position: fixed;
@@ -35,8 +33,6 @@ st.markdown("""
         pointer-events: none;
         z-index: 0;
     }
-
-    /* ====== SIDEBAR ====== */
     [data-testid="stSidebar"] {
         background: #F5F7FA !important;
         border-right: 1px solid rgba(0,180,100,0.15);
@@ -48,14 +44,10 @@ st.markdown("""
         height: 3px;
         background: linear-gradient(90deg, #00C060, #00B4D8, #7C3AED);
     }
-
-    /* ====== MAIN CONTENT ====== */
     .main .block-container {
         padding-top: 2rem;
         max-width: 1100px;
     }
-
-    /* ====== TYPOGRAPHY ====== */
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Comfortaa', sans-serif;
         font-weight: 600;
@@ -80,8 +72,6 @@ st.markdown("""
         color: #3A4A60 !important;
         font-weight: 500;
     }
-
-    /* ====== HERO BANNER ====== */
     .hero-banner {
         background: linear-gradient(135deg, #F0FFF8 0%, #E8F5FF 50%, #F5F0FF 100%);
         border: 1px solid rgba(0,200,100,0.2);
@@ -94,17 +84,12 @@ st.markdown("""
     .hero-banner::before, .hero-banner::after {
         content: '';
         position: absolute;
-        width: 250px;
-        height: 250px;
+        width: 250px; height: 250px;
         background: radial-gradient(circle, rgba(0,200,100,0.06) 0%, transparent 70%);
         pointer-events: none;
     }
-    .hero-banner::before {
-        top: -80px; right: -80px;
-    }
-    .hero-banner::after {
-        bottom: -50px; left: 30%;
-    }
+    .hero-banner::before { top: -80px; right: -80px; }
+    .hero-banner::after  { bottom: -50px; left: 30%; }
     .hero-tagline {
         font-family: 'Comfortaa', monospace;
         font-size: 0.75rem;
@@ -123,32 +108,18 @@ st.markdown("""
         margin-bottom: 0.8rem;
     }
     .hero-title .green { color: #00A050; }
-    .hero-desc {
-        color: #556070;
-        font-size: 1rem;
-        line-height: 1.65;
-        max-width: 620px;
-    }
-    .waveform-deco {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        margin-top: 1.5rem;
-    }
+    .hero-desc { color: #556070; font-size: 1rem; line-height: 1.65; max-width: 620px; }
+    .waveform-deco { display: flex; align-items: center; gap: 3px; margin-top: 1.5rem; }
     .waveform-deco span {
-        display: inline-block;
-        width: 4px;
+        display: inline-block; width: 4px;
         background: linear-gradient(180deg, #00C060, #00B4D8);
-        border-radius: 2px;
-        opacity: 0.5;
+        border-radius: 2px; opacity: 0.5;
         animation: wavepulse 1.2s ease-in-out infinite alternate;
     }
     @keyframes wavepulse {
         from { transform: scaleY(0.3); }
         to   { transform: scaleY(1); }
     }
-
-    /* ====== STEP CARDS ====== */
     .step-card {
         background: #F8FAFC;
         border: 1px solid rgba(0,0,0,0.07);
@@ -158,223 +129,70 @@ st.markdown("""
         margin-bottom: 1rem;
         height: 100%;
     }
-    .step-num {
-        font-family: 'Comfortaa', monospace;
-        font-size: 0.65rem;
-        color: #00A050;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 0.3rem;
-    }
-    .step-title {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #1A1A2E;
-        margin-bottom: 0.3rem;
-    }
-    .step-desc {
-        font-size: 0.85rem;
-        color: #556070;
-        line-height: 1.5;
-    }
-
-    /* ====== SECTION PILL ====== */
+    .step-num { font-family: 'Comfortaa', monospace; font-size: 0.65rem; color: #00A050; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 0.3rem; }
+    .step-title { font-size: 1rem; font-weight: 600; color: #1A1A2E; margin-bottom: 0.3rem; }
+    .step-desc { font-size: 0.85rem; color: #556070; line-height: 1.5; }
     .section-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
+        display: inline-flex; align-items: center; gap: 0.4rem;
         background: rgba(0,180,80,0.08);
         border: 1px solid rgba(0,180,80,0.2);
-        border-radius: 40px;
-        padding: 0.2rem 0.8rem;
-        font-family: 'Comfortaa', monospace;
-        font-size: 0.7rem;
-        color: #00A050;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
-        margin-bottom: 0.6rem;
+        border-radius: 40px; padding: 0.2rem 0.8rem;
+        font-family: 'Comfortaa', monospace; font-size: 0.7rem;
+        color: #00A050; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 0.6rem;
     }
-
-    /* ====== BADGES ====== */
     .badge {
         display: inline-block;
-        background: rgba(0,180,80,0.08);
-        border: 1px solid rgba(0,180,80,0.22);
-        color: #00A050;
-        font-family: 'Comfortaa', monospace;
-        font-size: 0.62rem;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        padding: 0.15rem 0.5rem;
-        border-radius: 4px;
-        margin-right: 0.4rem;
-        margin-bottom: 0.5rem;
+        background: rgba(0,180,80,0.08); border: 1px solid rgba(0,180,80,0.22);
+        color: #00A050; font-family: 'Comfortaa', monospace; font-size: 0.62rem;
+        letter-spacing: 0.8px; text-transform: uppercase;
+        padding: 0.15rem 0.5rem; border-radius: 4px; margin-right: 0.4rem; margin-bottom: 0.5rem;
     }
-    .badge.blue {
-        background: rgba(0,150,200,0.08);
-        border-color: rgba(0,150,200,0.22);
-        color: #0090C0;
-    }
-    .badge.purple {
-        background: rgba(100,50,200,0.08);
-        border-color: rgba(100,50,200,0.22);
-        color: #6030B0;
-    }
-
-    /* ====== BUTTONS ====== */
+    .badge.blue  { background: rgba(0,150,200,0.08); border-color: rgba(0,150,200,0.22); color: #0090C0; }
+    .badge.purple{ background: rgba(100,50,200,0.08); border-color: rgba(100,50,200,0.22); color: #6030B0; }
     .stButton > button {
         background: linear-gradient(135deg, #00C060, #009A4E) !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        border-radius: 10px !important;
-        font-family: 'Comfortaa', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-        padding: 0.5rem 1.2rem !important;
-        transition: 0.2s ease !important;
-        box-shadow: 0 2px 8px rgba(0,180,80,0.2) !important;
+        color: #FFFFFF !important; border: none !important; border-radius: 10px !important;
+        font-family: 'Comfortaa', sans-serif !important; font-weight: 600 !important;
+        font-size: 0.85rem !important; padding: 0.5rem 1.2rem !important;
+        transition: 0.2s ease !important; box-shadow: 0 2px 8px rgba(0,180,80,0.2) !important;
     }
     .stButton > button:hover {
         background: linear-gradient(135deg, #00E676, #00C060) !important;
-        box-shadow: 0 4px 16px rgba(0,200,80,0.25) !important;
-        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0,200,80,0.25) !important; transform: translateY(-1px);
     }
-
-    /* ====== METRICS ====== */
-    [data-testid="stMetric"] {
-        background: #F0F4F8 !important;
-        border: 1px solid rgba(0,0,0,0.07) !important;
-        border-radius: 12px !important;
-        padding: 0.8rem 1rem !important;
-    }
-    [data-testid="stMetricLabel"] {
-        font-family: 'Comfortaa', monospace !important;
-        font-size: 0.6rem !important;
-        color: #7A8FAA !important;
-        letter-spacing: 1.2px !important;
-        text-transform: uppercase !important;
-    }
-    [data-testid="stMetricValue"] {
-        font-family: 'Comfortaa', sans-serif !important;
-        font-weight: 700 !important;
-        font-size: 1.8rem !important;
-        color: #00A050 !important;
-    }
-
-    /* ====== EXPANDERS ====== */
-    [data-testid="stExpander"] {
-        background: #F8FAFC !important;
-        border: 1px solid rgba(0,0,0,0.08) !important;
-        border-radius: 12px !important;
-        overflow: hidden;
-    }
-    [data-testid="stExpander"] summary {
-        font-family: 'Comfortaa', sans-serif !important;
-        font-weight: 500 !important;
-        color: #556070 !important;
-    }
-    [data-testid="stExpander"] summary:hover {
-        color: #00A050 !important;
-    }
-
-    /* ====== PROGRESS BAR ====== */
-    [data-testid="stProgressBar"] > div > div {
-        background: linear-gradient(90deg, #00C060, #00B4D8) !important;
-        border-radius: 999px !important;
-    }
-    [data-testid="stProgressBar"] > div {
-        background: rgba(0,0,0,0.07) !important;
-        border-radius: 999px !important;
-    }
-
-    /* ====== CAPTIONS ====== */
-    .stCaption, [data-testid="stCaptionContainer"] {
-        font-family: 'Comfortaa', monospace !important;
-        font-size: 0.68rem !important;
-        color: #8A9AB0 !important;
-    }
-
-    /* ====== ALERTS ====== */
-    .stSuccess > div {
-        background: rgba(0,180,80,0.07) !important;
-        border-left: 3px solid #00C060 !important;
-        border-radius: 8px !important;
-        color: #006030 !important;
-    }
-    .stInfo > div {
-        background: rgba(0,150,200,0.07) !important;
-        border-left: 3px solid #00A0C8 !important;
-        border-radius: 8px !important;
-    }
-    .stWarning > div {
-        background: rgba(200,130,0,0.07) !important;
-        border-left: 3px solid #C08000 !important;
-        border-radius: 8px !important;
-    }
-    .stError > div {
-        background: rgba(200,50,50,0.07) !important;
-        border-left: 3px solid #C03030 !important;
-        border-radius: 8px !important;
-    }
-
-    /* ====== AUDIO INPUT ====== */
-    .stAudioInput > div {
-        background: #F0F4F8 !important;
-        border: 1px solid rgba(0,180,80,0.15) !important;
-        border-radius: 12px !important;
-    }
-
-    /* ====== DIVIDER ====== */
-    hr {
-        border: none !important;
-        border-top: 1px solid rgba(0,0,0,0.07) !important;
-        margin: 2rem 0 !important;
-    }
-
-    /* ====== PAGE LINK ====== */
-    [data-testid="stPageLink"] {
-        background: #F0F4F8 !important;
-        border: 1px solid rgba(0,180,80,0.15) !important;
-        border-radius: 12px !important;
-        transition: 0.2s !important;
-    }
-    [data-testid="stPageLink"]:hover {
-        border-color: rgba(0,180,80,0.35) !important;
-        box-shadow: 0 0 16px rgba(0,180,80,0.08) !important;
-    }
-
-    /* ====== SCROLLBAR ====== */
+    [data-testid="stMetric"] { background: #F0F4F8 !important; border: 1px solid rgba(0,0,0,0.07) !important; border-radius: 12px !important; padding: 0.8rem 1rem !important; }
+    [data-testid="stMetricLabel"] { font-family: 'Comfortaa', monospace !important; font-size: 0.6rem !important; color: #7A8FAA !important; letter-spacing: 1.2px !important; text-transform: uppercase !important; }
+    [data-testid="stMetricValue"] { font-family: 'Comfortaa', sans-serif !important; font-weight: 700 !important; font-size: 1.8rem !important; color: #00A050 !important; }
+    [data-testid="stExpander"] { background: #F8FAFC !important; border: 1px solid rgba(0,0,0,0.08) !important; border-radius: 12px !important; overflow: hidden; }
+    [data-testid="stExpander"] summary { font-family: 'Comfortaa', sans-serif !important; font-weight: 500 !important; color: #556070 !important; }
+    [data-testid="stExpander"] summary:hover { color: #00A050 !important; }
+    [data-testid="stProgressBar"] > div > div { background: linear-gradient(90deg, #00C060, #00B4D8) !important; border-radius: 999px !important; }
+    [data-testid="stProgressBar"] > div { background: rgba(0,0,0,0.07) !important; border-radius: 999px !important; }
+    .stCaption, [data-testid="stCaptionContainer"] { font-family: 'Comfortaa', monospace !important; font-size: 0.68rem !important; color: #8A9AB0 !important; }
+    .stSuccess > div { background: rgba(0,180,80,0.07) !important; border-left: 3px solid #00C060 !important; border-radius: 8px !important; color: #006030 !important; }
+    .stInfo > div { background: rgba(0,150,200,0.07) !important; border-left: 3px solid #00A0C8 !important; border-radius: 8px !important; }
+    .stWarning > div { background: rgba(200,130,0,0.07) !important; border-left: 3px solid #C08000 !important; border-radius: 8px !important; }
+    .stError > div { background: rgba(200,50,50,0.07) !important; border-left: 3px solid #C03030 !important; border-radius: 8px !important; }
+    .stAudioInput > div { background: #F0F4F8 !important; border: 1px solid rgba(0,180,80,0.15) !important; border-radius: 12px !important; }
+    hr { border: none !important; border-top: 1px solid rgba(0,0,0,0.07) !important; margin: 2rem 0 !important; }
+    [data-testid="stPageLink"] { background: #F0F4F8 !important; border: 1px solid rgba(0,180,80,0.15) !important; border-radius: 12px !important; transition: 0.2s !important; }
+    [data-testid="stPageLink"]:hover { border-color: rgba(0,180,80,0.35) !important; box-shadow: 0 0 16px rgba(0,180,80,0.08) !important; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #F5F7FA; }
-    ::-webkit-scrollbar-thumb {
-        background: rgba(0,180,80,0.2);
-        border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0,180,80,0.4);
-    }
+    ::-webkit-scrollbar-thumb { background: rgba(0,180,80,0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,180,80,0.4); }
 </style>
 """, unsafe_allow_html=True)
 
-# ========== MATPLOTLIB GLOBAL STYLE — WHITE THEME ==========
+# ========== MATPLOTLIB GLOBAL STYLE ==========
 plt.rcParams.update({
-    'figure.facecolor': '#FFFFFF',
-    'axes.facecolor': '#F8FAFC',
-    'axes.edgecolor': '#CCCCCC',
-    'axes.labelcolor': '#444444',
-    'axes.titlecolor': '#222222',
-    'axes.titlesize': 11,
-    'axes.labelsize': 9,
-    'xtick.color': '#666666',
-    'ytick.color': '#666666',
-    'xtick.labelsize': 8,
-    'ytick.labelsize': 8,
-    'grid.color': '#DDDDDD',
-    'grid.linestyle': '--',
-    'grid.alpha': 0.5,
-    'text.color': '#444444',
-    'font.family': 'monospace',
-    'lines.linewidth': 1.4,
+    'figure.facecolor': '#FFFFFF', 'axes.facecolor': '#F8FAFC',
+    'axes.edgecolor': '#CCCCCC', 'axes.labelcolor': '#444444',
+    'axes.titlecolor': '#222222', 'axes.titlesize': 11, 'axes.labelsize': 9,
+    'xtick.color': '#666666', 'ytick.color': '#666666',
+    'xtick.labelsize': 8, 'ytick.labelsize': 8,
+    'grid.color': '#DDDDDD', 'grid.linestyle': '--', 'grid.alpha': 0.5,
+    'text.color': '#444444', 'font.family': 'monospace', 'lines.linewidth': 1.4,
 })
 
 # ========== HERO HEADER ==========
@@ -388,7 +206,7 @@ st.markdown("""
         Rekam, bandingkan, dan rasakan sendiri cara komputer "mendengar".
     </p>
     <div class="waveform-deco">
-        <span style="height:8px;  animation-delay:0s"></span>
+        <span style="height:8px; animation-delay:0s"></span>
         <span style="height:22px; animation-delay:0.10s"></span>
         <span style="height:36px; animation-delay:0.20s"></span>
         <span style="height:14px; animation-delay:0.30s"></span>
@@ -438,9 +256,7 @@ fig_synth, ax_synth = plt.subplots(figsize=(9, 2.5))
 ax_synth.plot(t_synth, y_synth, color='#00A050', linewidth=1.2, alpha=0.9)
 ax_synth.fill_between(t_synth, y_synth, alpha=0.08, color='#00A050')
 ax_synth.set_title("Waveform Sinyal Sintetik (400 Hz + 800 Hz) — 0.1 detik")
-ax_synth.set_xlabel("Waktu (detik)")
-ax_synth.set_ylabel("Amplitudo")
-ax_synth.grid(True)
+ax_synth.set_xlabel("Waktu (detik)"); ax_synth.set_ylabel("Amplitudo"); ax_synth.grid(True)
 fig_synth.tight_layout()
 st.pyplot(fig_synth)
 st.caption("Gelombang ini sangat halus dan periodik, berbeda dengan suara alami yang lebih kompleks.")
@@ -458,9 +274,7 @@ with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
         ax_cat.plot(t_cat, y_cat[:sample_limit], color='#0090C0', linewidth=0.8, alpha=0.9)
         ax_cat.fill_between(t_cat, y_cat[:sample_limit], alpha=0.07, color='#0090C0')
         ax_cat.set_title("Waveform Asli Cat.mp3 (2 detik pertama)")
-        ax_cat.set_xlabel("Waktu (detik)")
-        ax_cat.set_ylabel("Amplitudo")
-        ax_cat.grid(True)
+        ax_cat.set_xlabel("Waktu (detik)"); ax_cat.set_ylabel("Amplitudo"); ax_cat.grid(True)
         fig_cat.tight_layout()
         st.pyplot(fig_cat)
         st.caption(f"Durasi total: {duration:.2f} detik. Bentuknya lebih acak dibanding sinyal sintetik.")
@@ -473,23 +287,15 @@ st.markdown('<div class="section-pill" style="margin-top:2rem">🔬 Bab 02</div>
 st.header("Bagaimana Komputer Memproses Suara?")
 st.markdown('<p style="color:#556070; font-size:0.93rem; margin-bottom:1.5rem">Komputer mengubah gelombang suara menjadi angka, lalu menganalisisnya melalui beberapa tahap berikut.</p>', unsafe_allow_html=True)
 
-# Overview cards row 1
 c1, c2, c3 = st.columns(3)
-with c1:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 01</div><div class="step-title">Sampling</div><div class="step-desc">Mengubah gelombang analog menjadi angka diskrit pada interval tetap</div></div>', unsafe_allow_html=True)
-with c2:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 02</div><div class="step-title">Waveform</div><div class="step-desc">Visualisasi deretan angka sampel sebagai gelombang digital</div></div>', unsafe_allow_html=True)
-with c3:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 03</div><div class="step-title">Windowing</div><div class="step-desc">Memotong suara panjang menjadi frame pendek 20–50 ms</div></div>', unsafe_allow_html=True)
+with c1: st.markdown('<div class="step-card"><div class="step-num">STEP 01</div><div class="step-title">Sampling</div><div class="step-desc">Mengubah gelombang analog menjadi angka diskrit pada interval tetap</div></div>', unsafe_allow_html=True)
+with c2: st.markdown('<div class="step-card"><div class="step-num">STEP 02</div><div class="step-title">Waveform</div><div class="step-desc">Visualisasi deretan angka sampel sebagai gelombang digital</div></div>', unsafe_allow_html=True)
+with c3: st.markdown('<div class="step-card"><div class="step-num">STEP 03</div><div class="step-title">Windowing</div><div class="step-desc">Memotong suara panjang menjadi frame pendek 20–50 ms</div></div>', unsafe_allow_html=True)
 
-# Overview cards row 2
 c4, c5, c6 = st.columns(3)
-with c4:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 04</div><div class="step-title">FFT</div><div class="step-desc">Mengubah frame dari domain waktu ke spektrum frekuensi</div></div>', unsafe_allow_html=True)
-with c5:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 05</div><div class="step-title">Spektrogram</div><div class="step-desc">Melihat bagaimana frekuensi berubah seiring waktu (2D)</div></div>', unsafe_allow_html=True)
-with c6:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 06</div><div class="step-title">MFCC</div><div class="step-desc">Fitur ringkas yang meniru persepsi pendengaran manusia</div></div>', unsafe_allow_html=True)
+with c4: st.markdown('<div class="step-card"><div class="step-num">STEP 04</div><div class="step-title">FFT</div><div class="step-desc">Mengubah frame dari domain waktu ke spektrum frekuensi</div></div>', unsafe_allow_html=True)
+with c5: st.markdown('<div class="step-card"><div class="step-num">STEP 05</div><div class="step-title">Spektrogram</div><div class="step-desc">Melihat bagaimana frekuensi berubah seiring waktu (2D)</div></div>', unsafe_allow_html=True)
+with c6: st.markdown('<div class="step-card"><div class="step-num">STEP 06</div><div class="step-title">MFCC</div><div class="step-desc">Fitur ringkas yang meniru persepsi pendengaran manusia</div></div>', unsafe_allow_html=True)
 
 # ========== LOAD FILE SUARA KUCING ==========
 cat_file = "Cat.mp3"
@@ -703,6 +509,7 @@ if cat_available:
         st.pyplot(fig12)
         st.caption("MFCC inilah yang dibandingkan untuk mengenali atau mencocokkan suara.")
 
+
 # ========== BAGIAN 3: VOICE SIMILARITY CHALLENGE ==========
 st.markdown('<div class="section-pill" style="margin-top:2.5rem">🏆 Bab 03</div>', unsafe_allow_html=True)
 st.header("Pengenalan Suara — Voice Similarity Challenge")
@@ -710,43 +517,79 @@ st.header("Pengenalan Suara — Voice Similarity Challenge")
 st.markdown("""
 <div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.15); border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.5rem">
 <p style="color:#556070; margin:0; font-size:0.92rem; line-height:1.8">
-Untuk membandingkan dua suara, sistem menggunakan
-<strong style="color:#00A050">Resemblyzer (GE2E Speaker Embeddings)</strong> — model pretrained dari Google
-yang mengubah audio menjadi vektor 256 dimensi, lalu dihitung dengan
-<strong style="color:#00A050">Cosine Similarity</strong>.
+Untuk membandingkan kemiripan <em>karakter suara</em> (bukan identitas pembicara), sistem menggunakan
+<strong style="color:#00A050">MFCC + Delta + Delta-Delta</strong> yang dirata-ratakan menjadi vektor statistik,
+lalu dihitung jaraknya dengan <strong style="color:#00A050">Cosine Similarity</strong>.
+Fitur ini sensitif terhadap <em>warna timbral</em> suara — kucing vs manusia akan sangat berbeda.
 Skor hasil: <strong style="color:#1A1A2E">0–1</strong> (1 = identik).
 </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ========== LOAD ENCODER (cached) ==========
-@st.cache_resource
-def load_encoder():
-    return VoiceEncoder()
-
-encoder = load_encoder()
-
-def get_embedding(file_path):
+# ========== FUNGSI EKSTRAKSI FITUR TIMBRAL ==========
+def extract_timbral_features(file_path, sr_target=16000):
+    """
+    Mengekstrak fitur timbral (warna suara) yang membedakan kucing vs manusia.
+    Menggunakan statistik MFCC + Delta + Spectral features.
+    """
     try:
-        wav = preprocess_wav(Path(file_path))
-        if len(wav) < 16000 * 0.5:
+        y, sr_loaded = librosa.load(file_path, sr=sr_target)
+
+        if len(y) < sr_loaded * 0.5:
             st.warning("Rekaman terlalu pendek (minimal 0.5 detik).")
             return None
-        embedding = encoder.embed_utterance(wav)
-        return embedding
+
+        # --- Noise gate: potong keheningan di awal/akhir ---
+        y, _ = librosa.effects.trim(y, top_db=20)
+
+        # --- MFCC (40 koefisien) + statistik mean & std ---
+        mfcc = librosa.feature.mfcc(y=y, sr=sr_loaded, n_mfcc=40)
+        mfcc_delta  = librosa.feature.delta(mfcc)
+        mfcc_delta2 = librosa.feature.delta(mfcc, order=2)
+
+        mfcc_mean  = np.mean(mfcc, axis=1)
+        mfcc_std   = np.std(mfcc, axis=1)
+        d_mean     = np.mean(mfcc_delta, axis=1)
+        d2_mean    = np.mean(mfcc_delta2, axis=1)
+
+        # --- Spectral features: centroid, bandwidth, rolloff, flatness, ZCR ---
+        spec_centroid  = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr_loaded))
+        spec_bandwidth = np.mean(librosa.feature.spectral_bandwidth(y=y, sr=sr_loaded))
+        spec_rolloff   = np.mean(librosa.feature.spectral_rolloff(y=y, sr=sr_loaded))
+        spec_flatness  = np.mean(librosa.feature.spectral_flatness(y=y))
+        zcr            = np.mean(librosa.feature.zero_crossing_rate(y))
+
+        # --- Gabungkan semua fitur jadi satu vektor ---
+        feature_vec = np.concatenate([
+            mfcc_mean, mfcc_std,    # 40 + 40 = 80
+            d_mean, d2_mean,        # 40 + 40 = 80
+            [spec_centroid, spec_bandwidth, spec_rolloff, spec_flatness, zcr]  # 5
+        ])  # Total: 165 dimensi
+
+        # --- Normalisasi L2 ---
+        norm = np.linalg.norm(feature_vec)
+        if norm > 0:
+            feature_vec = feature_vec / norm
+
+        return feature_vec
+
     except Exception as e:
         st.error(f"Gagal memproses {file_path}: {e}")
         return None
 
-def compute_similarity(emb_ref, emb_test):
-    if emb_ref is None or emb_test is None:
-        return 0.0
-    similarity = np.dot(emb_ref, emb_test) / (
-        np.linalg.norm(emb_ref) * np.linalg.norm(emb_test)
-    )
-    # Rescale dari [-1,1] ke [0,1]
-    return float((similarity + 1) / 2)
 
+def compute_similarity(feat_ref, feat_test):
+    """Cosine similarity antara dua vektor fitur timbral. Output: 0-1."""
+    if feat_ref is None or feat_test is None:
+        return 0.0
+    cos_sim = np.dot(feat_ref, feat_test) / (
+        np.linalg.norm(feat_ref) * np.linalg.norm(feat_test) + 1e-8
+    )
+    # Cosine similarity sudah [-1,1], rescale ke [0,1]
+    return float(np.clip((cos_sim + 1) / 2, 0.0, 1.0))
+
+
+# ========== LOAD REFERENSI ==========
 cat1_path = "Cat.mp3"
 cat2_path = "Cat2.mp3"
 
@@ -755,7 +598,10 @@ if not os.path.exists(cat1_path):
     st.stop()
 
 cat2_available = os.path.exists(cat2_path)
-seq_ref = get_embedding(cat1_path)
+
+with st.spinner("Mengekstrak fitur referensi Cat.mp3..."):
+    seq_ref = extract_timbral_features(cat1_path)
+
 if seq_ref is None:
     st.error("Gagal memproses Cat.mp3.")
     st.stop()
@@ -766,7 +612,7 @@ st.caption("Cat.mp3 — dijadikan patokan perbandingan.")
 
 if cat2_available:
     st.subheader("Cat.mp3 vs Cat2.mp3")
-    seq_cat2 = get_embedding(cat2_path)
+    seq_cat2 = extract_timbral_features(cat2_path)
     if seq_cat2 is not None:
         sim_cat2 = compute_similarity(seq_ref, seq_cat2)
         col1, col2 = st.columns([1, 2])
@@ -774,12 +620,12 @@ if cat2_available:
             st.audio(cat2_path, format="audio/mpeg")
         with col2:
             st.metric("Kemiripan Cat.mp3 vs Cat2.mp3", f"{sim_cat2:.3f}")
-            if sim_cat2 > 0.6:
-                st.success("✅ Sangat mirip — mungkin kucing yang sama.")
-            elif sim_cat2 > 0.4:
-                st.info("🔊 Cukup mirip, ada perbedaan.")
+            if sim_cat2 > 0.85:
+                st.success("✅ Sangat mirip — karakter suara hampir identik.")
+            elif sim_cat2 > 0.70:
+                st.info("🔊 Cukup mirip, ada perbedaan timbral.")
             else:
-                st.warning("⚠️ Berbeda — ekspresi atau jenis berbeda.")
+                st.warning("⚠️ Berbeda — warna suara berbeda jauh.")
 else:
     st.info("File Cat2.mp3 tidak tersedia. Bagian ini dilewati.")
 
@@ -788,8 +634,9 @@ st.subheader("🎙️ Tantangan: Siapa yang Lebih Mirip Kucing?")
 st.markdown("""
 <div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.12); border-radius:12px; padding:1rem 1.4rem; margin-bottom:1.2rem">
 <p style="color:#556070; margin:0; font-size:0.88rem; line-height:1.7">
-Rekam dua suara berbeda. Sistem akan membandingkan keduanya dengan <strong style="color:#00A050">Cat.mp3</strong>
-menggunakan <strong style="color:#00A050">Resemblyzer + Cosine Similarity</strong>, lalu menentukan siapa yang lebih mirip kucing!
+Rekam dua suara berbeda. Sistem membandingkan <strong style="color:#00A050">warna timbral</strong> suara
+menggunakan MFCC statistik + fitur spektral, bukan identitas pembicara —
+sehingga suara manusia biasa akan mendapat skor jauh lebih rendah dari suara kucing.
 </p>
 </div>
 """, unsafe_allow_html=True)
@@ -808,13 +655,11 @@ with col_h1:
         temp1 = "temp_human1.wav"
         with open(temp1, "wb") as f:
             f.write(audio1.getbuffer())
-            
-        # PERBAIKAN DI SINI: Gunakan get_embedding agar cocok dengan Resemblyzer
-        seq1 = get_embedding(temp1) 
-        
-        if seq1 is not None:
-            sim1 = compute_similarity(seq_ref, seq1)
-            st.session_state.human1_audio = (temp1, seq1, sim1)
+        with st.spinner("Menganalisis..."):
+            feat1 = extract_timbral_features(temp1)
+        if feat1 is not None:
+            sim1 = compute_similarity(seq_ref, feat1)
+            st.session_state.human1_audio = (temp1, feat1, sim1)
             st.session_state.human1_processed = True
             st.metric("Skor vs Cat.mp3", f"{sim1:.3f}")
         else:
@@ -831,13 +676,11 @@ with col_h2:
         temp2 = "temp_human2.wav"
         with open(temp2, "wb") as f:
             f.write(audio2.getbuffer())
-            
-        # PERBAIKAN DI SINI: Gunakan get_embedding agar cocok dengan Resemblyzer
-        seq2 = get_embedding(temp2)
-        
-        if seq2 is not None:
-            sim2 = compute_similarity(seq_ref, seq2)
-            st.session_state.human2_audio = (temp2, seq2, sim2)
+        with st.spinner("Menganalisis..."):
+            feat2 = extract_timbral_features(temp2)
+        if feat2 is not None:
+            sim2 = compute_similarity(seq_ref, feat2)
+            st.session_state.human2_audio = (temp2, feat2, sim2)
             st.session_state.human2_processed = True
             st.metric("Skor vs Cat.mp3", f"{sim2:.3f}")
         else:
@@ -847,7 +690,25 @@ with col_h2:
         _, _, sim2 = st.session_state.human2_audio
         st.metric("Skor vs Cat.mp3", f"{sim2:.3f}")
 
-# --- TOMBOL RESET DI TENGAH BAWAH REKAMAN ---
+if st.session_state.human1_processed and st.session_state.human2_processed:
+    st.markdown("---")
+    st.markdown('<div class="section-pill">🏆 Hasil Akhir</div>', unsafe_allow_html=True)
+    _, _, sim1 = st.session_state.human1_audio
+    _, _, sim2 = st.session_state.human2_audio
+    cb1, cb2 = st.columns(2)
+    with cb1:
+        st.metric("Manusia 1", f"{sim1:.3f}")
+        st.progress(sim1)
+    with cb2:
+        st.metric("Manusia 2", f"{sim2:.3f}")
+        st.progress(sim2)
+    if sim1 > sim2:
+        st.success(f"🎉 **Manusia 1** lebih mirip kucing! (selisih {sim1 - sim2:.3f})")
+    elif sim2 > sim1:
+        st.success(f"🎉 **Manusia 2** lebih mirip kucing! (selisih {sim2 - sim1:.3f})")
+    else:
+        st.info("Keduanya sama persis!")
+
 if st.session_state.human1_processed or st.session_state.human2_processed:
     st.markdown("<br>", unsafe_allow_html=True)
     col_space1, col_btn, col_space3 = st.columns([1, 1, 1])
@@ -862,6 +723,8 @@ if st.session_state.human1_processed or st.session_state.human2_processed:
             st.session_state.human1_processed = False
             st.session_state.human2_processed = False
             st.rerun()
+else:
+    st.info("Rekam kedua suara manusia terlebih dahulu untuk melihat siapa yang lebih mirip kucing.")
 
 # ========== EXPLORE SECTION ==========
 st.markdown("---")
@@ -871,20 +734,12 @@ st.markdown('<p style="color:#556070; font-size:0.9rem; margin-bottom:1.2rem">Se
 
 colA, colB, colC = st.columns(3)
 with colA:
-    st.page_link(
-        "pages/1_Meme_Challenge.py",
-        label="🤣 Meme Voice Challenge",
-        help="Tonton video meme, rekam suaramu, dan bandingkan kemiripannya!",
-        use_container_width=True
-    )
+    st.page_link("pages/1_Meme_Challenge.py", label="🤣 Meme Voice Challenge",
+        help="Tonton video meme, rekam suaramu, dan bandingkan kemiripannya!", use_container_width=True)
     st.caption("✅ Sudah tersedia")
 with colB:
-    st.page_link(
-        "pages/2_Classification.py",
-        label="📊 Klasifikasi Suara 3D",
-        help="Visualisasi dataset ESC-50 dalam ruang 3D, klik titik untuk mendengar suara.",
-        use_container_width=True
-    )
+    st.page_link("pages/2_Classification.py", label="📊 Klasifikasi Suara 3D",
+        help="Visualisasi dataset ESC-50 dalam ruang 3D, klik titik untuk mendengar suara.", use_container_width=True)
     st.caption("🆓 Eksplorasi 50 kelas suara")
 with colC:
     st.button("🏎️ F1 Qualifying Voice (Segera)", disabled=True, use_container_width=True)
