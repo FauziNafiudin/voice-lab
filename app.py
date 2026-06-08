@@ -808,7 +808,7 @@ with col_h1:
         temp1 = "temp_human1.wav"
         with open(temp1, "wb") as f:
             f.write(audio1.getbuffer())
-        seq1 = get_embedding(temp1)
+        seq1 = get_mfcc_sequence(temp1, normalize=True)
         if seq1 is not None:
             sim1 = compute_similarity(seq_ref, seq1)
             st.session_state.human1_audio = (temp1, seq1, sim1)
@@ -828,7 +828,7 @@ with col_h2:
         temp2 = "temp_human2.wav"
         with open(temp2, "wb") as f:
             f.write(audio2.getbuffer())
-        seq2 = get_embedding(temp2)
+        seq2 = get_mfcc_sequence(temp2, normalize=True)
         if seq2 is not None:
             sim2 = compute_similarity(seq_ref, seq2)
             st.session_state.human2_audio = (temp2, seq2, sim2)
@@ -841,34 +841,41 @@ with col_h2:
         _, _, sim2 = st.session_state.human2_audio
         st.metric("Skor vs Cat.mp3", f"{sim2:.3f}")
 
+# --- TOMBOL RESET DI TENGAH BAWAH REKAMAN ---
+if st.session_state.human1_processed or st.session_state.human2_processed:
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_space1, col_btn, col_space3 = st.columns([1, 1, 1])
+    with col_btn:
+        if st.button("🔄 Reset Rekaman", key="reset_human", use_container_width=True):
+            for key in ['human1_audio', 'human2_audio']:
+                if st.session_state[key]:
+                    try: os.remove(st.session_state[key][0])
+                    except: pass
+            st.session_state.human1_audio = None
+            st.session_state.human2_audio = None
+            st.session_state.human1_processed = False
+            st.session_state.human2_processed = False
+            st.rerun()
+
+# --- HASIL AKHIR ---
 if st.session_state.human1_processed and st.session_state.human2_processed:
     st.markdown("---")
     st.markdown('<div class="section-pill">🏆 Hasil Akhir</div>', unsafe_allow_html=True)
     _, _, sim1 = st.session_state.human1_audio
     _, _, sim2 = st.session_state.human2_audio
+    
     cb1, cb2 = st.columns(2)
     with cb1:
-        st.metric("Manusia 1", f"{sim1:.3f}")
-        st.progress(sim1)
+        st.progress(sim1) # Menghapus metric ganda, hanya menyisakan bar
     with cb2:
-        st.metric("Manusia 2", f"{sim2:.3f}")
-        st.progress(sim2)
+        st.progress(sim2) # Menghapus metric ganda, hanya menyisakan bar
+        
     if sim1 > sim2:
         st.success(f"🎉 **Manusia 1** lebih mirip kucing! (selisih {sim1 - sim2:.3f})")
     elif sim2 > sim1:
         st.success(f"🎉 **Manusia 2** lebih mirip kucing! (selisih {sim2 - sim1:.3f})")
     else:
         st.info("Keduanya sama persis!")
-    if st.button("Reset Rekaman", key="reset_human"):
-        for key in ['human1_audio', 'human2_audio']:
-            if st.session_state[key]:
-                try: os.remove(st.session_state[key][0])
-                except: pass
-        st.session_state.human1_audio = None
-        st.session_state.human2_audio = None
-        st.session_state.human1_processed = False
-        st.session_state.human2_processed = False
-        st.rerun()
 else:
     st.info("Rekam kedua suara manusia terlebih dahulu untuk melihat siapa yang lebih mirip kucing.")
 
