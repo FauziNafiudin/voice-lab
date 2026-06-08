@@ -576,64 +576,36 @@ st.markdown("---")
 st.markdown('<div class="spill">🚀 Langkah 6</div>', unsafe_allow_html=True)
 st.header("Proses & Hitung Akurasi")
 
-# Membungkus proses ini dalam fragment agar loadingnya LOKAL
 @st.fragment
 def proses_ml_fragment():
     st.markdown(f"""
     <div class="card" style="margin-bottom:1.2rem">
       <p style="color:#5A6A85;font-size:.9rem;margin:0;line-height:1.8">
-        Konfigurasi siap dieksekusi:
-        <span style="color:#C8D0E0">SR={sample_rate} Hz</span> &nbsp;·&nbsp;
-        <span style="color:#C8D0E0">Durasi={duration}s</span> &nbsp;·&nbsp;
-        <span style="color:#C8D0E0">MFCC={n_mfcc}</span> &nbsp;·&nbsp;
-        <span style="color:#C8D0E0">Metode Viz={st.session_state.reduction_method}</span>
+        Konfigurasi: <span style="color:#C8D0E0">SR={sample_rate}Hz, Durasi={duration}s, MFCC={n_mfcc}, Metode={st.session_state.reduction_method}</span>
       </p>
     </div>
     """, unsafe_allow_html=True)
 
-    col_run, _ = st.columns([3, 5])
-    with col_run:
-        run_btn = st.button("⚡ Eksekusi Model & Visualisasi 3D", key="run_analysis", use_container_width=True)
-
-    # Hanya berjalan saat tombol diklik
-    if run_btn:
-        with st.spinner("⏳ Memproses audio, mengekstrak MFCC, dan melatih AI..."):
-            
-            # 1. Batasi file sesuai input (Max File per kategori)
-            sampled_frames = []
-            for cat in selected_cats:
-                cat_rows = filtered_meta[filtered_meta['category'] == cat]
-                n_take = min(len(cat_rows), max_per_cat)
-                sampled_frames.append(cat_rows.sample(n_take, random_state=42))
+    if st.button("⚡ Proses & Hitung Akurasi", key="run_analysis", use_container_width=True):
+        with st.spinner("⏳ Memproses audio dan melatih AI..."):
+            # 1. Persiapan Data
+            sampled_frames = [filtered_meta[filtered_meta['category'] == cat].sample(min(len(filtered_meta[filtered_meta['category'] == cat]), max_per_cat), random_state=42) for cat in selected_cats]
             limited_meta = pd.concat(sampled_frames, ignore_index=True)
-
             limited_audio = [Path("data/ESC-50-master/audio") / row['filename'] for _, row in limited_meta.iterrows()]
-            n_proc = len(limited_meta)
 
-            # 2. Ekstraksi Fitur MFCC dengan Progress Bar Lokal
-            prog = st.progress(0, text=f"Mengekstrak fitur dari {n_proc} file...")
+            # 2. Ekstraksi Fitur
             features, labels = [], []
-            for i, (fpath, row) in enumerate(zip(limited_audio, (r for _, r in limited_meta.iterrows()))):
+            for fpath, row in zip(limited_audio, (r for _, r in limited_meta.iterrows())):
                 try:
                     y_f, _ = librosa.load(str(fpath), sr=sample_rate, duration=duration)
                     if len(y_f) > 0:
                         mfcc = librosa.feature.mfcc(y=y_f, sr=sample_rate, n_mfcc=n_mfcc)
-                        feat = np.concatenate([np.mean(mfcc, axis=1), np.std(mfcc, axis=1)])
-                        features.append(feat)
+                        features.append(np.concatenate([np.mean(mfcc, axis=1), np.std(mfcc, axis=1)]))
                         labels.append(row['category'])
-                except Exception:
-                    pass
-                prog.progress((i + 1) / n_proc)
-            prog.empty() # Sembunyikan progress bar jika sudah selesai
+                except: continue
 
-            if len(features) < 10:
-                st.error("Gagal diproses. Pastikan dataset ESC-50 ada di folder yang benar.")
-                return
-
-            X = np.array(features)
+            X = StandardScaler().fit_transform(np.array(features))
             y_labels = np.array(labels)
-            scaler = StandardScaler()
-            X_norm = scaler.fit_transform(X)
 
             # 3. Reduksi Dimensi untuk Visualisasi 3D
             method_viz = st.session_state.reduction_method
