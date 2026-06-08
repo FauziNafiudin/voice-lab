@@ -694,15 +694,15 @@ def proses_ml_fragment():
                 best_label = '<div style="font-family:JetBrains Mono,monospace; font-size:.6rem; color:#00E676; letter-spacing:2px; margin-bottom:.5rem">🏆 TERBAIK</div>' if is_best else ''
                 
                 with col:
-                    st.markdown(f"""
+            st.markdown(f"""
 <div class="{card_cls}">
-    {best_label}
-    <div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
-    <div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
-    <div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
-    <div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
-        <div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
-    </div>
+{best_label}
+<div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
+<div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
+<div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
+<div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
+<div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
+</div>
 </div>
 """, unsafe_allow_html=True)
             
@@ -803,13 +803,13 @@ if st.session_state.get("results_ready", False):
         with col:
             st.markdown(f"""
 <div class="{card_cls}">
-    {best_label}
-    <div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
-    <div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
-    <div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
-    <div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
-        <div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
-    </div>
+{best_label}
+<div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
+<div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
+<div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
+<div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
+<div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
+</div>
 </div>
 """, unsafe_allow_html=True)
 
