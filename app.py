@@ -417,7 +417,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ========== BAGIAN 1: APA ITU AUDIO? ==========
-st.markdown('<div class="section-pill">📡 Bab 01</div>', unsafe_allow_html=True)
+# st.markdown('<div class="section-pill">📡 Bab 01</div>', unsafe_allow_html=True)
 st.header("Apa Itu Audio?")
 st.markdown("""
 <p style="color:#556070; font-size:0.95rem; line-height:1.8; margin-bottom:1.5rem">
