@@ -694,7 +694,7 @@ def proses_ml_fragment():
                 best_label = '<div style="font-family:JetBrains Mono,monospace; font-size:.6rem; color:#00E676; letter-spacing:2px; margin-bottom:.5rem">🏆 TERBAIK</div>' if is_best else ''
                 
                 with col:
-            st.markdown(f"""
+                    st.markdown(f"""
 <div class="{card_cls}">
 {best_label}
 <div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
