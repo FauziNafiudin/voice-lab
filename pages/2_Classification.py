@@ -686,22 +686,27 @@ def proses_ml_fragment():
                       ("SVM (RBF)", "Support Vector, kernel radial", acc_svm, col_m3)]
 
             for name, desc, acc, col in models:
-                is_best = abs(acc - best_acc) < 1e-9
-                card_cls = "model-card best" if is_best else "model-card"
-                bar_w = int(acc * 100)
-                bar_color = "#00E676" if is_best else "#00B4D8"
-                with col:
-                    st.markdown(f"""
-                    <div class="{card_cls}">
-                        {'<div style="font-family:JetBrains Mono,monospace; font-size:.6rem; color:#00E676; letter-spacing:2px; margin-bottom:.5rem">🏆 TERBAIK</div>' if is_best else ''}
-                        <div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
-                        <div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
-                        <div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
-                        <div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
-                            <div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+        is_best = abs(acc - best_acc) < 1e-9
+        card_cls = "model-card best" if is_best else "model-card"
+        bar_w = int(acc * 100)
+        bar_color = "#00E676" if is_best else "#00B4D8"
+        
+        # Pisahkan logika label agar tidak membentuk baris kosong yang error
+        best_label = '<div style="font-family:JetBrains Mono,monospace; font-size:.6rem; color:#00E676; letter-spacing:2px; margin-bottom:.5rem">🏆 TERBAIK</div>' if is_best else ''
+        
+        with col:
+            # Pastikan tag <div class="..."> diletakkan RATA KIRI (tanpa spasi di depannya)
+            st.markdown(f"""
+<div class="{card_cls}">
+    {best_label}
+    <div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
+    <div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
+    <div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
+        <div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
+    </div>
+</div>
+            """, unsafe_allow_html=True)
             
             best_name = [n for n,_,a,_ in models if abs(a-best_acc)<1e-9][0]
             st.success(f"🏆 Sistem merekomendasikan **{best_name}** sebagai algoritma paling cerdas dengan akurasi **{best_acc*100:.1f}%** untuk data ini.")
