@@ -417,7 +417,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ========== BAGIAN 1: APA ITU AUDIO? ==========
-# st.markdown('<div class="section-pill">📡 Bab 01</div>', unsafe_allow_html=True)
 st.header("Apa Itu Audio?")
 st.markdown("""
 <p style="color:#556070; font-size:0.95rem; line-height:1.8; margin-bottom:1.5rem">
@@ -469,7 +468,6 @@ with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
         st.info("Pastikan file Cat.mp3 berada di folder yang sama dengan aplikasi ini.")
 
 # ========== BAGIAN 2: BAGAIMANA KOMPUTER PROSES SUARA ==========
-st.markdown('<div class="section-pill" style="margin-top:2rem">🔬 Bab 02</div>', unsafe_allow_html=True)
 st.header("Bagaimana Komputer Memproses Suara?")
 st.markdown('<p style="color:#556070; font-size:0.93rem; margin-bottom:1.5rem">Komputer mengubah gelombang suara menjadi angka, lalu menganalisisnya melalui beberapa tahap berikut.</p>', unsafe_allow_html=True)
 
@@ -704,7 +702,6 @@ if cat_available:
         st.caption("MFCC inilah yang dibandingkan untuk mengenali atau mencocokkan suara.")
 
 # ========== BAGIAN 3: VOICE SIMILARITY CHALLENGE ==========
-st.markdown('<div class="section-pill" style="margin-top:2.5rem">🏆 Bab 03</div>', unsafe_allow_html=True)
 st.header("Pengenalan Suara — Voice Similarity Challenge")
 
 st.markdown("""
