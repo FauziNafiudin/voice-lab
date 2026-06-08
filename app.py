@@ -364,8 +364,8 @@ st.markdown("""
 
 # ========== MATPLOTLIB GLOBAL STYLE ==========
 plt.rcParams.update({
-    'figure.facecolor': '#180D2E', /* Deep violet matching stApp */
-    'axes.facecolor': '#221340',   /* Slightly lighter card background */
+    'figure.facecolor': '#180D2E', # Deep violet matching stApp
+    'axes.facecolor': '#221340',   # Slightly lighter card background
     'axes.edgecolor': '#3A2463',
     'axes.labelcolor': '#9481B5',
     'axes.titlecolor': '#D0C4EA',
