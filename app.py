@@ -1,11 +1,10 @@
 import streamlit as st
 import numpy as np
 import librosa
-import librosa.display
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
-from scipy.spatial.distance import cdist
+from scipy.spatial.distance import cosine
 
 # ========== KONFIGURASI HALAMAN ==========
 st.set_page_config(
@@ -33,7 +32,6 @@ st.markdown("""
         pointer-events: none;
         z-index: 0;
     }
-
     [data-testid="stSidebar"] {
         background: #F5F7FA !important;
         border-right: 1px solid rgba(0,180,100,0.15);
@@ -45,12 +43,10 @@ st.markdown("""
         height: 3px;
         background: linear-gradient(90deg, #00C060, #00B4D8, #7C3AED);
     }
-
     .main .block-container {
         padding-top: 2rem;
         max-width: 1100px;
     }
-
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Comfortaa', sans-serif;
         font-weight: 600;
@@ -75,7 +71,6 @@ st.markdown("""
         color: #3A4A60 !important;
         font-weight: 500;
     }
-
     .hero-banner {
         background: linear-gradient(135deg, #F0FFF8 0%, #E8F5FF 50%, #F5F0FF 100%);
         border: 1px solid rgba(0,200,100,0.2);
@@ -94,7 +89,6 @@ st.markdown("""
     }
     .hero-banner::before { top: -80px; right: -80px; }
     .hero-banner::after  { bottom: -50px; left: 30%; }
-
     .hero-tagline {
         font-family: 'Comfortaa', monospace;
         font-size: 0.75rem;
@@ -137,7 +131,6 @@ st.markdown("""
         from { transform: scaleY(0.3); }
         to   { transform: scaleY(1); }
     }
-
     .step-card {
         background: #F8FAFC;
         border: 1px solid rgba(0,0,0,0.07);
@@ -147,10 +140,16 @@ st.markdown("""
         margin-bottom: 1rem;
         height: 100%;
     }
-    .step-num   { font-family:'Comfortaa',monospace; font-size:0.65rem; color:#00A050; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:0.3rem; }
-    .step-title { font-size:1rem; font-weight:600; color:#1A1A2E; margin-bottom:0.3rem; }
-    .step-desc  { font-size:0.85rem; color:#556070; line-height:1.5; }
-
+    .step-num {
+        font-family: 'Comfortaa', monospace;
+        font-size: 0.65rem;
+        color: #00A050;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 0.3rem;
+    }
+    .step-title { font-size: 1rem; font-weight: 600; color: #1A1A2E; margin-bottom: 0.3rem; }
+    .step-desc  { font-size: 0.85rem; color: #556070; line-height: 1.5; }
     .section-pill {
         display: inline-flex;
         align-items: center;
@@ -166,11 +165,22 @@ st.markdown("""
         text-transform: uppercase;
         margin-bottom: 0.6rem;
     }
-
-    .badge        { display:inline-block; background:rgba(0,180,80,0.08); border:1px solid rgba(0,180,80,0.22); color:#00A050; font-family:'Comfortaa',monospace; font-size:0.62rem; letter-spacing:0.8px; text-transform:uppercase; padding:0.15rem 0.5rem; border-radius:4px; margin-right:0.4rem; margin-bottom:0.5rem; }
-    .badge.blue   { background:rgba(0,150,200,0.08); border-color:rgba(0,150,200,0.22); color:#0090C0; }
-    .badge.purple { background:rgba(100,50,200,0.08); border-color:rgba(100,50,200,0.22); color:#6030B0; }
-
+    .badge {
+        display: inline-block;
+        background: rgba(0,180,80,0.08);
+        border: 1px solid rgba(0,180,80,0.22);
+        color: #00A050;
+        font-family: 'Comfortaa', monospace;
+        font-size: 0.62rem;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        margin-right: 0.4rem;
+        margin-bottom: 0.5rem;
+    }
+    .badge.blue   { background: rgba(0,150,200,0.08);   border-color: rgba(0,150,200,0.22);   color: #0090C0; }
+    .badge.purple { background: rgba(100,50,200,0.08);  border-color: rgba(100,50,200,0.22);  color: #6030B0; }
     .stButton > button {
         background: linear-gradient(135deg, #00C060, #009A4E) !important;
         color: #FFFFFF !important;
@@ -188,7 +198,6 @@ st.markdown("""
         box-shadow: 0 4px 16px rgba(0,200,80,0.25) !important;
         transform: translateY(-1px);
     }
-
     [data-testid="stMetric"] {
         background: #F0F4F8 !important;
         border: 1px solid rgba(0,0,0,0.07) !important;
@@ -208,7 +217,6 @@ st.markdown("""
         font-size: 1.8rem !important;
         color: #00A050 !important;
     }
-
     [data-testid="stExpander"] {
         background: #F8FAFC !important;
         border: 1px solid rgba(0,0,0,0.08) !important;
@@ -221,7 +229,6 @@ st.markdown("""
         color: #556070 !important;
     }
     [data-testid="stExpander"] summary:hover { color: #00A050 !important; }
-
     [data-testid="stProgressBar"] > div > div {
         background: linear-gradient(90deg, #00C060, #00B4D8) !important;
         border-radius: 999px !important;
@@ -230,26 +237,42 @@ st.markdown("""
         background: rgba(0,0,0,0.07) !important;
         border-radius: 999px !important;
     }
-
     .stCaption, [data-testid="stCaptionContainer"] {
         font-family: 'Comfortaa', monospace !important;
         font-size: 0.68rem !important;
         color: #8A9AB0 !important;
     }
-
-    .stSuccess > div { background:rgba(0,180,80,0.07) !important; border-left:3px solid #00C060 !important; border-radius:8px !important; color:#006030 !important; }
-    .stInfo    > div { background:rgba(0,150,200,0.07) !important; border-left:3px solid #00A0C8 !important; border-radius:8px !important; }
-    .stWarning > div { background:rgba(200,130,0,0.07) !important; border-left:3px solid #C08000 !important; border-radius:8px !important; }
-    .stError   > div { background:rgba(200,50,50,0.07)  !important; border-left:3px solid #C03030 !important; border-radius:8px !important; }
-
+    .stSuccess > div {
+        background: rgba(0,180,80,0.07) !important;
+        border-left: 3px solid #00C060 !important;
+        border-radius: 8px !important;
+        color: #006030 !important;
+    }
+    .stInfo > div {
+        background: rgba(0,150,200,0.07) !important;
+        border-left: 3px solid #00A0C8 !important;
+        border-radius: 8px !important;
+    }
+    .stWarning > div {
+        background: rgba(200,130,0,0.07) !important;
+        border-left: 3px solid #C08000 !important;
+        border-radius: 8px !important;
+    }
+    .stError > div {
+        background: rgba(200,50,50,0.07) !important;
+        border-left: 3px solid #C03030 !important;
+        border-radius: 8px !important;
+    }
     .stAudioInput > div {
         background: #F0F4F8 !important;
         border: 1px solid rgba(0,180,80,0.15) !important;
         border-radius: 12px !important;
     }
-
-    hr { border:none !important; border-top:1px solid rgba(0,0,0,0.07) !important; margin:2rem 0 !important; }
-
+    hr {
+        border: none !important;
+        border-top: 1px solid rgba(0,0,0,0.07) !important;
+        margin: 2rem 0 !important;
+    }
     [data-testid="stPageLink"] {
         background: #F0F4F8 !important;
         border: 1px solid rgba(0,180,80,0.15) !important;
@@ -260,47 +283,10 @@ st.markdown("""
         border-color: rgba(0,180,80,0.35) !important;
         box-shadow: 0 0 16px rgba(0,180,80,0.08) !important;
     }
-
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #F5F7FA; }
     ::-webkit-scrollbar-thumb { background: rgba(0,180,80,0.2); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(0,180,80,0.4); }
-
-    /* ====== SIMILARITY CARD ====== */
-    .sim-card {
-        background: linear-gradient(135deg, #F0FFF8, #E8F5FF);
-        border: 1px solid rgba(0,180,80,0.18);
-        border-radius: 16px;
-        padding: 1.2rem 1.5rem;
-        margin-bottom: 1rem;
-    }
-    .sim-label {
-        font-family: 'Comfortaa', monospace;
-        font-size: 0.62rem;
-        color: #7A9AB0;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 0.3rem;
-    }
-    .sim-score {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #00A050;
-        font-family: 'Comfortaa', sans-serif;
-    }
-    .sim-bar-bg {
-        height: 8px;
-        background: rgba(0,0,0,0.07);
-        border-radius: 999px;
-        margin-top: 0.6rem;
-        overflow: hidden;
-    }
-    .sim-bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #00C060, #00B4D8);
-        transition: width 0.5s ease;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -325,113 +311,106 @@ plt.rcParams.update({
     'lines.linewidth': 1.4,
 })
 
-# ============================================================
-# ========== FUNGSI MFCC + DTW (MENGGANTIKAN RESEMBLYZER) ====
-# ============================================================
-
-def compute_mfcc_features(file_path, sr=16000, n_mfcc=13):
+# ========== FUNGSI EKSTRAKSI FITUR SPEKTRAL ==========
+@st.cache_data
+def extract_spectral_features(file_path, sr_target=16000, n_mfcc=13):
     """
-    Ekstrak MFCC + Delta MFCC dari file audio.
-    Return: np.ndarray shape (T, n_mfcc*2) atau None jika gagal.
+    Ekstrak fitur spektral dari file audio:
+    - MFCC mean vector  (representasi timbre/spectral envelope)
+    - Spectral Centroid mean
+    - Spectral Rolloff mean
+    - Spectral Bandwidth mean
+    - Spectral Contrast mean (7 band)
+    - ZCR mean
     """
-    try:
-        y, _ = librosa.load(file_path, sr=sr)
-        # Normalisasi amplitudo agar volume tidak memengaruhi skor
-        y = librosa.util.normalize(y)
-        # MFCC statis (13 koefisien)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
-        # Delta MFCC: menangkap dinamika perubahan spektrum
-        delta = librosa.feature.delta(mfcc)
-        # Gabungkan → shape (n_mfcc*2, T), transpose → (T, n_mfcc*2)
-        features = np.vstack([mfcc, delta]).T
-        return features
-    except Exception as e:
-        st.error(f"Gagal memproses {file_path}: {e}")
-        return None
+    y, sr = librosa.load(file_path, sr=sr_target)
+
+    mfcc        = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
+    mfcc_mean   = np.mean(mfcc, axis=1)
+
+    centroid    = librosa.feature.spectral_centroid(y=y, sr=sr)
+    centroid_m  = np.mean(centroid)
+
+    rolloff     = librosa.feature.spectral_rolloff(y=y, sr=sr, roll_percent=0.85)
+    rolloff_m   = np.mean(rolloff)
+
+    bandwidth   = librosa.feature.spectral_bandwidth(y=y, sr=sr)
+    bandwidth_m = np.mean(bandwidth)
+
+    contrast    = librosa.feature.spectral_contrast(y=y, sr=sr)
+    contrast_m  = np.mean(contrast, axis=1)
+
+    zcr         = librosa.feature.zero_crossing_rate(y)
+    zcr_m       = np.mean(zcr)
+
+    # Normalisasi sederhana
+    feature_vector = np.concatenate([
+        mfcc_mean,
+        [centroid_m / 8000],
+        [rolloff_m  / 8000],
+        [bandwidth_m / 8000],
+        contrast_m / (np.max(np.abs(contrast_m)) + 1e-9),
+        [zcr_m * 100],
+    ])
+    return feature_vector, y, sr
 
 
-def dtw_distance(seq1, seq2):
-    """
-    Hitung DTW distance antara dua sekuens MFCC menggunakan cosine distance.
-    Dinormalisasi dengan panjang path agar adil untuk durasi berbeda.
-    Return: float (jarak ternormalisasi, lebih kecil = lebih mirip)
-    """
-    # Cost matrix antar semua pasang frame
-    cost_matrix = cdist(seq1, seq2, metric='cosine')
-
-    n, m = cost_matrix.shape
-    dtw_matrix = np.full((n + 1, m + 1), np.inf)
-    dtw_matrix[0, 0] = 0.0
-
-    for i in range(1, n + 1):
-        for j in range(1, m + 1):
-            cost = cost_matrix[i - 1, j - 1]
-            dtw_matrix[i, j] = cost + min(
-                dtw_matrix[i - 1, j],      # insertion
-                dtw_matrix[i, j - 1],      # deletion
-                dtw_matrix[i - 1, j - 1],  # match
-            )
-
-    raw_distance = dtw_matrix[n, m]
-    # Normalisasi dengan total panjang path agar tidak bias oleh durasi
-    normalized = raw_distance / (n + m)
-    return float(normalized)
+def spectral_distance(vec_a, vec_b):
+    """Cosine Distance → similarity [0,1]"""
+    dist = cosine(vec_a, vec_b)          # range [0,2]
+    similarity = 1.0 - (dist / 2.0)
+    return float(similarity), float(dist)
 
 
-def dtw_to_similarity(dtw_dist, scale=3.5):
-    """
-    Konversi DTW distance ke skor kemiripan [0, 1] menggunakan fungsi eksponensial.
-      - dtw_dist ≈ 0.00       → similarity ≈ 1.00  (identik)
-      - dtw_dist ≈ 0.10–0.20  → similarity ≈ 0.50–0.70  (tiruan kucing bagus)
-      - dtw_dist ≈ 0.40–0.60  → similarity ≈ 0.12–0.25  (suara manusia normal)
-      - dtw_dist > 0.80       → similarity < 0.06  (sangat berbeda)
-    Naikkan `scale` → discriminasi lebih tajam.
-    """
-    similarity = np.exp(-scale * dtw_dist)
-    return float(similarity)
+def plot_spectral_comparison(file_a, file_b, label_a="Audio A", label_b="Audio B", sr_target=16000):
+    """Visualisasi perbandingan MFCC mean dan spectral centroid over time"""
+    y_a, sr = librosa.load(file_a, sr=sr_target)
+    y_b, _  = librosa.load(file_b, sr=sr_target)
 
+    n_mfcc = 13
+    mfcc_a = np.mean(librosa.feature.mfcc(y=y_a, sr=sr, n_mfcc=n_mfcc), axis=1)
+    mfcc_b = np.mean(librosa.feature.mfcc(y=y_b, sr=sr, n_mfcc=n_mfcc), axis=1)
 
-def get_mfcc_features(file_path, min_frames=10):
-    """Wrapper aman dengan validasi panjang rekaman."""
-    features = compute_mfcc_features(file_path)
-    if features is None:
-        return None
-    if len(features) < min_frames:
-        st.warning("Rekaman terlalu pendek. Minimal ±0.3 detik.")
-        return None
-    return features
+    cent_a = librosa.feature.spectral_centroid(y=y_a, sr=sr)[0]
+    cent_b = librosa.feature.spectral_centroid(y=y_b, sr=sr)[0]
 
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 3.5))
 
-def compute_similarity(feat_ref, feat_test):
-    """Hitung similarity [0,1] antara dua fitur MFCC via DTW."""
-    if feat_ref is None or feat_test is None:
-        return 0.0
-    dist = dtw_distance(feat_ref, feat_test)
-    return dtw_to_similarity(dist, scale=3.5)
+    # MFCC bar chart
+    x = np.arange(n_mfcc)
+    width = 0.35
+    ax1.bar(x - width/2, mfcc_a, width, label=label_a, color='#00A050', alpha=0.8)
+    ax1.bar(x + width/2, mfcc_b, width, label=label_b, color='#FF6B35', alpha=0.8)
+    ax1.set_title("Mean MFCC — Perbandingan Spektral")
+    ax1.set_xlabel("Koefisien MFCC ke-")
+    ax1.set_ylabel("Nilai rata-rata")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([str(i+1) for i in x])
+    ax1.legend(fontsize=8)
+    ax1.grid(True, axis='y')
 
+    # Spectral Centroid over time
+    t_a = np.linspace(0, len(y_a)/sr, len(cent_a))
+    t_b = np.linspace(0, len(y_b)/sr, len(cent_b))
+    ax2.plot(t_a, cent_a, color='#00A050', linewidth=1.2, alpha=0.85, label=label_a)
+    ax2.plot(t_b, cent_b, color='#FF6B35', linewidth=1.2, alpha=0.85, label=label_b, linestyle='--')
+    ax2.set_title("Spectral Centroid — Titik Berat Frekuensi")
+    ax2.set_xlabel("Waktu (detik)")
+    ax2.set_ylabel("Frekuensi (Hz)")
+    ax2.legend(fontsize=8)
+    ax2.grid(True)
 
-def similarity_label(score):
-    """Return (emoji, text, color) berdasarkan skor kemiripan."""
-    if score >= 0.65:
-        return "✅", "Sangat mirip — tiruan kucing yang sangat bagus!", "#006030"
-    elif score >= 0.45:
-        return "🔊", "Cukup mirip — ada nuansa suara kucing.", "#005080"
-    elif score >= 0.25:
-        return "🐾", "Sedikit mirip — masih terasa suara manusia.", "#7A5800"
-    else:
-        return "❌", "Sangat berbeda — ini suara manusia normal.", "#800000"
+    fig.tight_layout()
+    return fig
 
-
-# ============================================================
 # ========== HERO HEADER ==========
-# ============================================================
 st.markdown("""
 <div class="hero-banner">
     <span class="hero-tagline">🎤 Interactive Audio Lab</span>
     <div class="hero-title">Voice <span class="green">Lab</span></div>
     <p class="hero-desc">
         Jelajahi dunia <strong style="color:#1A1A2E">audio processing</strong> secara interaktif —
-        dari gelombang sintetik sampai pengenalan suara berbasis MFCC + DTW.
+        dari gelombang sintetik sampai pengenalan suara berbasis <strong style="color:#00A050">Spectral Distance</strong>.
         Rekam, bandingkan, dan rasakan sendiri cara komputer "mendengar".
     </p>
     <div class="waveform-deco">
@@ -463,10 +442,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# ========== BAB 01: APA ITU AUDIO? ==========
-# ============================================================
-st.markdown('<div class="section-pill">📡 Bab 01</div>', unsafe_allow_html=True)
+# ========== BAGIAN 1: APA ITU AUDIO? ==========
 st.header("Apa Itu Audio?")
 st.markdown("""
 <p style="color:#556070; font-size:0.95rem; line-height:1.8; margin-bottom:1.5rem">
@@ -481,9 +457,8 @@ st.markdown('<span class="badge">Synthetic</span><span class="badge blue">400 Hz
 st.caption("Gelombang sintetik sangat teratur dan mudah dipelajari — penjumlahan dua frekuensi berbeda.")
 
 sr_synth = 16000
-t_synth  = np.linspace(0, 0.1, int(sr_synth * 0.1))
-y_synth  = np.sin(2 * np.pi * 400 * t_synth) + 0.5 * np.sin(2 * np.pi * 800 * t_synth)
-
+t_synth = np.linspace(0, 0.1, int(sr_synth * 0.1))
+y_synth = np.sin(2 * np.pi * 400 * t_synth) + 0.5 * np.sin(2 * np.pi * 800 * t_synth)
 fig_synth, ax_synth = plt.subplots(figsize=(9, 2.5))
 ax_synth.plot(t_synth, y_synth, color='#00A050', linewidth=1.2, alpha=0.9)
 ax_synth.fill_between(t_synth, y_synth, alpha=0.08, color='#00A050')
@@ -518,10 +493,7 @@ with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
         st.warning(f"File {cat_file} tidak ditemukan.")
         st.info("Pastikan file Cat.mp3 berada di folder yang sama dengan aplikasi ini.")
 
-# ============================================================
-# ========== BAB 02: BAGAIMANA KOMPUTER PROSES SUARA ==========
-# ============================================================
-st.markdown('<div class="section-pill" style="margin-top:2rem">🔬 Bab 02</div>', unsafe_allow_html=True)
+# ========== BAGIAN 2: BAGAIMANA KOMPUTER PROSES SUARA ==========
 st.header("Bagaimana Komputer Memproses Suara?")
 st.markdown('<p style="color:#556070; font-size:0.93rem; margin-bottom:1.5rem">Komputer mengubah gelombang suara menjadi angka, lalu menganalisisnya melalui beberapa tahap berikut.</p>', unsafe_allow_html=True)
 
@@ -539,9 +511,9 @@ with c4:
 with c5:
     st.markdown('<div class="step-card"><div class="step-num">STEP 05</div><div class="step-title">Spektrogram</div><div class="step-desc">Melihat bagaimana frekuensi berubah seiring waktu (2D)</div></div>', unsafe_allow_html=True)
 with c6:
-    st.markdown('<div class="step-card"><div class="step-num">STEP 06</div><div class="step-title">MFCC + DTW</div><div class="step-desc">Fitur akustik ringkas + Dynamic Time Warping untuk perbandingan suara</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-card"><div class="step-num">STEP 06</div><div class="step-title">MFCC</div><div class="step-desc">Fitur ringkas yang meniru persepsi pendengaran manusia</div></div>', unsafe_allow_html=True)
 
-# ========== LOAD FILE SUARA KUCING ==========
+# ========== LOAD FILE SUARA KUCING (untuk demo sampling dll) ==========
 cat_file = "Cat.mp3"
 if os.path.exists(cat_file):
     y_full, sr = librosa.load(cat_file, sr=16000)
@@ -571,7 +543,6 @@ t_cont = np.linspace(0, 0.1, 1000)
 y_cont = np.sin(2 * np.pi * 50 * t_cont)
 t_sample_sint = np.linspace(0, 0.1, int(sr_sintetis * 0.1))
 y_sample_sint = np.sin(2 * np.pi * 50 * t_sample_sint)
-
 fig1, ax1 = plt.subplots(figsize=(9, 3))
 ax1.plot(t_cont, y_cont, color='#0090C0', alpha=0.4, linewidth=1.5, label='Gelombang analog (ilustrasi)')
 ml, sl, bl = ax1.stem(t_sample_sint, y_sample_sint, linefmt='#00A050', markerfmt='o', basefmt=' ', label=f'Sampel ({sr_sintetis} Hz)')
@@ -634,13 +605,12 @@ st.markdown('<span class="badge">Segmentasi</span><span class="badge blue">Frame
 st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8">Suara panjang dipotong jadi <strong style="color:#00A050">frame pendek 20–50 ms</strong> yang tumpang tindih, lalu setiap frame dianalisis dengan FFT.</p>', unsafe_allow_html=True)
 
 durasi_sint = 0.5
-t_sint  = np.linspace(0, durasi_sint, int(16000 * durasi_sint))
-y_sint  = np.sin(2 * np.pi * 440 * t_sint)
+t_sint = np.linspace(0, durasi_sint, int(16000 * durasi_sint))
+y_sint = np.sin(2 * np.pi * 440 * t_sint)
 frame_durasi = 0.025
-hop_durasi   = 0.010
+hop_durasi = 0.010
 frame_len = int(frame_durasi * 16000)
-hop_len   = int(hop_durasi * 16000)
-
+hop_len = int(hop_durasi * 16000)
 fig5, ax5 = plt.subplots(figsize=(9, 3))
 ax5.plot(t_sint, y_sint, color='#0090C0', alpha=0.5, linewidth=1)
 for i in range(5):
@@ -669,14 +639,13 @@ st.subheader("4 — FFT (Fast Fourier Transform)")
 st.markdown('<span class="badge">Waktu → Frekuensi</span>', unsafe_allow_html=True)
 st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#00A050">FFT</strong> mengubah frame dari domain waktu menjadi <strong style="color:#1A1A2E">spektrum frekuensi</strong> — menunjukkan frekuensi apa yang dominan.</p>', unsafe_allow_html=True)
 
-fs_demo   = 16000
+fs_demo = 16000
 frame_demo = np.linspace(0, 0.025, int(0.025 * fs_demo))
-y_demo     = np.sin(2 * np.pi * 440 * frame_demo) + 0.5 * np.sin(2 * np.pi * 880 * frame_demo)
-fft_vals   = np.fft.fft(y_demo)
-freqs      = np.fft.fftfreq(len(y_demo), 1 / fs_demo)
-magnitude  = np.abs(fft_vals[:len(fft_vals) // 2])
-freqs_pos  = freqs[:len(freqs) // 2]
-
+y_demo = np.sin(2 * np.pi * 440 * frame_demo) + 0.5 * np.sin(2 * np.pi * 880 * frame_demo)
+fft_vals = np.fft.fft(y_demo)
+freqs = np.fft.fftfreq(len(y_demo), 1 / fs_demo)
+magnitude = np.abs(fft_vals[:len(fft_vals) // 2])
+freqs_pos = freqs[:len(freqs) // 2]
 fig7, (ax7a, ax7b) = plt.subplots(1, 2, figsize=(9, 3))
 ax7a.plot(frame_demo, y_demo, color='#0090C0', linewidth=1.2)
 ax7a.fill_between(frame_demo, y_demo, alpha=0.07, color='#0090C0')
@@ -691,8 +660,8 @@ st.caption("Puncak di 440 Hz dan 880 Hz terlihat jelas di spektrum.")
 if cat_available:
     with st.expander("🐱 FFT pada satu frame suara kucing"):
         frame_kucing = y_panjang[:frame_len]
-        fft_kucing   = np.fft.fft(frame_kucing)
-        mag_kucing   = np.abs(fft_kucing[:len(fft_kucing) // 2])
+        fft_kucing = np.fft.fft(frame_kucing)
+        mag_kucing = np.abs(fft_kucing[:len(fft_kucing) // 2])
         freqs_kucing = np.fft.fftfreq(len(frame_kucing), 1 / sr)[:len(frame_kucing) // 2]
         fig8, ax8 = plt.subplots(figsize=(9, 2.5))
         ax8.plot(freqs_kucing, mag_kucing, color='#FF6B35', linewidth=1)
@@ -712,7 +681,6 @@ t_gliss = np.linspace(0, 1, 16000)
 f_gliss = np.linspace(200, 1000, len(t_gliss))
 y_gliss = np.sin(2 * np.pi * f_gliss * t_gliss)
 D_gliss = librosa.amplitude_to_db(np.abs(librosa.stft(y_gliss)), ref=np.max)
-
 fig9, ax9 = plt.subplots(figsize=(9, 3))
 img = librosa.display.specshow(D_gliss, sr=16000, x_axis='time', y_axis='hz', ax=ax9, cmap='magma')
 ax9.set_title("Spektrogram glissando (frekuensi naik 200 → 1000 Hz)")
@@ -732,16 +700,10 @@ if cat_available:
         st.pyplot(fig10)
         st.caption("Distribusi frekuensi berubah seiring waktu — kompleks dan dinamis.")
 
-# ========== LANGKAH 6: MFCC + DTW ==========
-st.subheader("6 — MFCC + DTW (Dynamic Time Warping)")
-st.markdown('<span class="badge">Feature Extraction</span><span class="badge blue">13 Koefisien</span><span class="badge purple">DTW Distance</span>', unsafe_allow_html=True)
-st.markdown("""
-<p style="color:#556070; font-size:0.9rem; line-height:1.8">
-<strong style="color:#00A050">MFCC</strong> adalah fitur ringkas yang meniru persepsi pendengaran manusia.
-<strong style="color:#00A050">DTW</strong> membandingkan dua sekuens MFCC dengan toleransi perbedaan durasi —
-inilah metrik akustik yang digunakan di Bab 03.
-</p>
-""", unsafe_allow_html=True)
+# ========== LANGKAH 6: MFCC ==========
+st.subheader("6 — MFCC (Mel-Frequency Cepstral Coefficients)")
+st.markdown('<span class="badge">Feature Extraction</span><span class="badge blue">13 Koefisien</span>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#00A050">MFCC</strong> adalah fitur ringkas yang meniru persepsi pendengaran manusia. 13–20 koefisien per frame — inilah yang dipakai AI untuk pengenalan suara.</p>', unsafe_allow_html=True)
 
 mfcc_gliss = librosa.feature.mfcc(y=y_gliss, sr=16000, n_mfcc=13)
 fig11, ax11 = plt.subplots(figsize=(9, 3))
@@ -761,48 +723,35 @@ if cat_available:
         plt.colorbar(img, ax=ax12)
         fig12.tight_layout()
         st.pyplot(fig12)
-        st.caption("MFCC + DTW membandingkan pola ini antar rekaman secara akustik murni.")
+        st.caption("MFCC inilah yang dibandingkan untuk mengenali atau mencocokkan suara.")
 
-# ============================================================
-# ========== BAB 03: VOICE SIMILARITY CHALLENGE ==========
-# ============================================================
-st.markdown('<div class="section-pill" style="margin-top:2.5rem">🏆 Bab 03</div>', unsafe_allow_html=True)
+# ========== BAGIAN 3: VOICE SIMILARITY CHALLENGE ==========
 st.header("Pengenalan Suara — Voice Similarity Challenge")
 
 st.markdown("""
 <div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.15); border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.5rem">
 <p style="color:#556070; margin:0; font-size:0.92rem; line-height:1.8">
-Sistem menggunakan <strong style="color:#00A050">MFCC + DTW (Dynamic Time Warping)</strong> untuk mengukur
-kemiripan akustik dua suara. Tidak seperti speaker verification, metrik ini mengukur
-<strong style="color:#1A1A2E">kemiripan bunyi murni</strong> — suara manusia normal akan mendapat skor
-<strong style="color:#C03030">rendah</strong>, tiruan kucing yang bagus mendapat skor
-<strong style="color:#00A050">tinggi</strong>.
-Skor: <strong style="color:#1A1A2E">0 = sangat berbeda, 1 = identik</strong>.
+Sistem menggunakan <strong style="color:#00A050">Spectral Distance</strong> untuk mengukur kemiripan suara.
+Fitur spektral yang diekstrak meliputi <strong style="color:#1A1A2E">MFCC, Spectral Centroid, Spectral Rolloff,
+Spectral Bandwidth, Spectral Contrast, dan Zero Crossing Rate</strong> — digabung menjadi satu feature vector,
+lalu dihitung jaraknya menggunakan <strong style="color:#00A050">Cosine Distance</strong>.
+Skor: <strong style="color:#1A1A2E">0–1</strong> (1 = identik secara spektral).
 </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ========== PENJELASAN METRIK ==========
-with st.expander("📐 Mengapa MFCC + DTW lebih baik dari Cosine Similarity Resemblyzer?"):
+with st.expander("📐 Cara Kerja Spectral Distance"):
     st.markdown("""
-**Masalah Resemblyzer (GE2E Speaker Embeddings):**
-- Dilatih untuk membedakan *identitas pembicara manusia*, bukan kemiripan akustik antar spesies
-- Semua suara manusia akan "dekat" satu sama lain di ruang embedding-nya (cosine ~0.75–0.95)
-- Rescaling `(sim + 1) / 2` membuat nilai yang sebenarnya rendah terlihat tinggi
-- Hasilnya: suara manusia biasa pun bisa mendapat skor 0.8+ vs suara kucing
+    **Spectral Distance** mengukur seberapa "jauh" dua suara secara spektral — yaitu berdasarkan
+    distribusi energi frekuensinya, bukan berdasarkan identitas pembicara.
 
-**Solusi MFCC + DTW:**
-- MFCC mengukur *karakteristik akustik spektral* langsung dari sinyal audio
-- DTW menyelaraskan dua sekuens dengan panjang berbeda secara optimal
-- Cosine distance per frame mengukur perbedaan bentuk spektrum nyata
-- Hasilnya: suara manusia normal → skor rendah (~0.10–0.25), tiruan kucing bagus → skor tinggi (~0.45–0.70)
-
-**Mengapa cosine distance dalam DTW (bukan euclidean)?**
-- Cosine tidak terpengaruh volume (amplitudo), hanya bentuk spektrum
-- Lebih robust terhadap perbedaan level rekaman antar perangkat
+    **Tahapan perhitungan:**
+    1. Ekstrak fitur spektral dari setiap audio.
+    2. Gabungkan semua fitur menjadi satu vektor (24 dimensi).
+    3. Hitung Cosine Distance antar dua vektor.
+    4. Konversi ke similarity score dalam rentang [0,1].
     """)
 
-# ========== LOAD REFERENSI ==========
 cat1_path = "Cat.mp3"
 cat2_path = "Cat2.mp3"
 
@@ -810,175 +759,197 @@ if not os.path.exists(cat1_path):
     st.error(f"File {cat1_path} tidak ditemukan. Letakkan Cat.mp3 di folder yang sama.")
     st.stop()
 
-feat_ref = get_mfcc_features(cat1_path)
-if feat_ref is None:
-    st.error("Gagal memproses Cat.mp3.")
+# Ekstrak fitur referensi Cat.mp3
+try:
+    feat_ref, _, _ = extract_spectral_features(cat1_path)
+except Exception as e:
+    st.error(f"Gagal memproses Cat.mp3: {e}")
     st.stop()
 
-st.markdown("**🎵 Suara Referensi**")
-st.audio(cat1_path, format="audio/mpeg")
-st.caption("Cat.mp3 — dijadikan patokan perbandingan akustik.")
-
-# ========== CAT1 VS CAT2 ==========
 cat2_available = os.path.exists(cat2_path)
-if cat2_available:
-    st.subheader("Cat.mp3 vs Cat2.mp3")
-    feat_cat2 = get_mfcc_features(cat2_path)
-    if feat_cat2 is not None:
-        sim_cat2 = compute_similarity(feat_ref, feat_cat2)
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.audio(cat2_path, format="audio/mpeg")
-        with col2:
-            emoji, label, color = similarity_label(sim_cat2)
-            bar_pct = int(sim_cat2 * 100)
-            st.markdown(f"""
-            <div class="sim-card">
-                <div class="sim-label">Kemiripan Akustik (MFCC + DTW)</div>
-                <div class="sim-score">{sim_cat2:.3f}</div>
-                <div class="sim-bar-bg">
-                    <div class="sim-bar-fill" style="width:{bar_pct}%"></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            st.markdown(f'<span style="color:{color}; font-size:0.9rem">{emoji} {label}</span>', unsafe_allow_html=True)
-else:
-    st.info("File Cat2.mp3 tidak tersedia. Bagian ini dilewati.")
 
-# ============================================================
-# ========== TANTANGAN: SIAPA YANG LEBIH MIRIP KUCING? ==========
-# ============================================================
+st.markdown("---")
+st.markdown("**🎵 Perbandingan Suara Kucing Asli**")
+
+col_cat1, col_cat2 = st.columns(2)
+with col_cat1:
+    st.markdown("**Kucing 1 (Cat.mp3)**")
+    st.audio(cat1_path, format="audio/mpeg")
+    st.caption("Suara referensi / patokan.")
+with col_cat2:
+    if cat2_available:
+        st.markdown("**Kucing 2 (Cat2.mp3)**")
+        st.audio(cat2_path, format="audio/mpeg")
+        st.caption("Suara kucing pembanding.")
+    else:
+        st.info("File Cat2.mp3 tidak tersedia.")
+
+if cat2_available:
+    st.markdown("<br>", unsafe_allow_html=True)
+    try:
+        feat_cat2, _, _ = extract_spectral_features(cat2_path)
+        sim_cat2, dist_cat2 = spectral_distance(feat_ref, feat_cat2)
+
+        _, col_hasil_tengah, _ = st.columns([1, 2, 1])
+        with col_hasil_tengah:
+            st.metric("Skor Kemiripan Spektral", f"{sim_cat2:.3f}")
+            st.caption(f"Cosine Distance: {dist_cat2:.4f}")
+            if sim_cat2 > 0.75:
+                st.success("✅ **Sangat mirip** secara spektral — karakteristik frekuensi hampir sama.")
+            elif sim_cat2 > 0.55:
+                st.info("🔊 **Cukup mirip** secara spektral, namun ada perbedaan karakter frekuensi.")
+            else:
+                st.warning("⚠️ **Berbeda** secara spektral — distribusi frekuensi cukup jauh berbeda.")
+
+        # Visualisasi perbandingan spektral
+        st.markdown("**📊 Visualisasi Perbandingan Spektral**")
+        fig_cmp = plot_spectral_comparison(cat1_path, cat2_path, "Cat 1", "Cat 2")
+        st.pyplot(fig_cmp)
+        st.caption("Kiri: perbandingan mean MFCC per koefisien. Kanan: Spectral Centroid seiring waktu.")
+    except Exception as e:
+        st.error(f"Gagal menghitung spectral distance: {e}")
+
+# ========== TANTANGAN ==========
 st.subheader("🎙️ Tantangan: Siapa yang Lebih Mirip Kucing?")
 st.markdown("""
 <div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.12); border-radius:12px; padding:1rem 1.4rem; margin-bottom:1.2rem">
 <p style="color:#556070; margin:0; font-size:0.88rem; line-height:1.7">
-Rekam dua suara berbeda. Sistem membandingkan keduanya dengan <strong style="color:#00A050">Cat.mp3</strong>
-menggunakan <strong style="color:#00A050">MFCC + DTW</strong>.
-Suara manusia normal → skor rendah. Tiruan kucing → skor tinggi.
+Rekam dua suara berbeda. Sistem akan menghitung <strong style="color:#00A050">Spectral Distance</strong>
+antara rekaman kamu dan <strong style="color:#00A050">Cat.mp3</strong> —
+semakin mirip distribusi frekuensinya, semakin tinggi skornya!
 </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ========== SESSION STATE ==========
-for key in ['human1_audio', 'human2_audio', 'human1_processed', 'human2_processed']:
-    if key not in st.session_state:
-        st.session_state[key] = None if 'audio' in key else False
+@st.fragment
+def rekaman_challenge_section():
+    if "human1_audio" not in st.session_state: st.session_state.human1_audio = None
+    if "human2_audio" not in st.session_state: st.session_state.human2_audio = None
+    if "human1_processed" not in st.session_state: st.session_state.human1_processed = False
+    if "human2_processed" not in st.session_state: st.session_state.human2_processed = False
 
-col_h1, col_h2 = st.columns(2)
+    col_h1, col_h2 = st.columns(2)
 
-# ========== MANUSIA 1 ==========
-with col_h1:
-    st.markdown("**👤 Manusia 1**")
-    audio1 = st.audio_input("Rekam suara tiruan kucing (Manusia 1)", key="human1_input")
-    if audio1 is not None:
-        temp1 = "temp_human1.wav"
-        with open(temp1, "wb") as f:
-            f.write(audio1.getbuffer())
-        feat1 = get_mfcc_features(temp1)
-        if feat1 is not None:
-            sim1 = compute_similarity(feat_ref, feat1)
-            st.session_state.human1_audio = (temp1, feat1, sim1)
-            st.session_state.human1_processed = True
+    with col_h1:
+        st.markdown("**👤 Manusia 1**")
+        audio1 = st.audio_input("Rekam suara tiruan kucing (Manusia 1)", key="human1_input")
+        if audio1 is not None:
+            with st.spinner("⏳ Menghitung Spectral Distance Manusia 1..."):
+                temp1 = "temp_human1.wav"
+                with open(temp1, "wb") as f:
+                    f.write(audio1.getbuffer())
+                try:
+                    feat1, _, _ = extract_spectral_features(temp1)
+                    sim1, dist1 = spectral_distance(feat_ref, feat1)
+                    st.session_state.human1_audio = (temp1, feat1, sim1, dist1)
+                    st.session_state.human1_processed = True
+                    st.metric("Skor Spektral vs Cat.mp3", f"{sim1:.3f}")
+                    st.caption(f"Cosine Distance: {dist1:.4f}")
+                except Exception as e:
+                    st.error(f"Gagal memproses: {e}")
+                    if os.path.exists(temp1): os.remove(temp1)
+        elif st.session_state.human1_processed:
+            _, _, sim1, dist1 = st.session_state.human1_audio
+            st.metric("Skor Spektral vs Cat.mp3", f"{sim1:.3f}")
+            st.caption(f"Cosine Distance: {dist1:.4f}")
+
+    with col_h2:
+        st.markdown("**👤 Manusia 2**")
+        audio2 = st.audio_input("Rekam suara tiruan kucing (Manusia 2)", key="human2_input")
+        if audio2 is not None:
+            with st.spinner("⏳ Menghitung Spectral Distance Manusia 2..."):
+                temp2 = "temp_human2.wav"
+                with open(temp2, "wb") as f:
+                    f.write(audio2.getbuffer())
+                try:
+                    feat2, _, _ = extract_spectral_features(temp2)
+                    sim2, dist2 = spectral_distance(feat_ref, feat2)
+                    st.session_state.human2_audio = (temp2, feat2, sim2, dist2)
+                    st.session_state.human2_processed = True
+                    st.metric("Skor Spektral vs Cat.mp3", f"{sim2:.3f}")
+                    st.caption(f"Cosine Distance: {dist2:.4f}")
+                except Exception as e:
+                    st.error(f"Gagal memproses: {e}")
+                    if os.path.exists(temp2): os.remove(temp2)
+        elif st.session_state.human2_processed:
+            _, _, sim2, dist2 = st.session_state.human2_audio
+            st.metric("Skor Spektral vs Cat.mp3", f"{sim2:.3f}")
+            st.caption(f"Cosine Distance: {dist2:.4f}")
+
+    # ===== HASIL PEMENANG + VISUALISASI =====
+    if st.session_state.human1_processed and st.session_state.human2_processed:
+        st.markdown("---")
+        st.markdown("### 🏆 Hasil")
+
+        _, _, sim1, dist1 = st.session_state.human1_audio
+        _, _, sim2, dist2 = st.session_state.human2_audio
+        temp1 = st.session_state.human1_audio[0]
+        temp2 = st.session_state.human2_audio[0]
+
+        col_r1, col_r2, col_r3 = st.columns(3)
+        with col_r1:
+            st.metric("Manusia 1", f"{sim1:.3f}", delta=f"{sim1 - sim2:+.3f} vs M2")
+        with col_r2:
+            st.metric("Manusia 2", f"{sim2:.3f}", delta=f"{sim2 - sim1:+.3f} vs M1")
+        with col_r3:
+            winner = "Manusia 1 🥇" if sim1 > sim2 else ("Manusia 2 🥇" if sim2 > sim1 else "Seri 🤝")
+            st.metric("Pemenang", winner)
+
+        if sim1 > sim2:
+            st.success(f"✅ **Manusia 1 menang!** Spektrum suaranya lebih dekat ke kucing (skor {sim1:.3f} vs {sim2:.3f}).")
+        elif sim2 > sim1:
+            st.success(f"✅ **Manusia 2 menang!** Spektrum suaranya lebih dekat ke kucing (skor {sim2:.3f} vs {sim1:.3f}).")
         else:
-            if os.path.exists(temp1):
-                os.remove(temp1)
-    if st.session_state.human1_processed and st.session_state.human1_audio:
-        _, _, sim1 = st.session_state.human1_audio
-        bar1 = int(sim1 * 100)
-        emoji1, label1, color1 = similarity_label(sim1)
-        st.markdown(f"""
-        <div class="sim-card">
-            <div class="sim-label">Skor vs Cat.mp3 (MFCC + DTW)</div>
-            <div class="sim-score">{sim1:.3f}</div>
-            <div class="sim-bar-bg">
-                <div class="sim-bar-fill" style="width:{bar1}%"></div>
-            </div>
-        </div>
-        <span style="color:{color1}; font-size:0.85rem">{emoji1} {label1}</span>
-        """, unsafe_allow_html=True)
+            st.info("🤝 **Seri!** Kedua suara memiliki jarak spektral yang sama ke Cat.mp3.")
 
-# ========== MANUSIA 2 ==========
-with col_h2:
-    st.markdown("**👤 Manusia 2**")
-    audio2 = st.audio_input("Rekam suara tiruan kucing (Manusia 2)", key="human2_input")
-    if audio2 is not None:
-        temp2 = "temp_human2.wav"
-        with open(temp2, "wb") as f:
-            f.write(audio2.getbuffer())
-        feat2 = get_mfcc_features(temp2)
-        if feat2 is not None:
-            sim2 = compute_similarity(feat_ref, feat2)
-            st.session_state.human2_audio = (temp2, feat2, sim2)
-            st.session_state.human2_processed = True
-        else:
-            if os.path.exists(temp2):
-                os.remove(temp2)
-    if st.session_state.human2_processed and st.session_state.human2_audio:
-        _, _, sim2 = st.session_state.human2_audio
-        bar2 = int(sim2 * 100)
-        emoji2, label2, color2 = similarity_label(sim2)
-        st.markdown(f"""
-        <div class="sim-card">
-            <div class="sim-label">Skor vs Cat.mp3 (MFCC + DTW)</div>
-            <div class="sim-score">{sim2:.3f}</div>
-            <div class="sim-bar-bg">
-                <div class="sim-bar-fill" style="width:{bar2}%"></div>
-            </div>
-        </div>
-        <span style="color:{color2}; font-size:0.85rem">{emoji2} {label2}</span>
-        """, unsafe_allow_html=True)
+        # Visualisasi perbandingan MFCC ketiga suara
+        st.markdown("**📊 Perbandingan Spektral: Manusia 1 vs Manusia 2 vs Kucing**")
+        try:
+            y1, sr1 = librosa.load(temp1, sr=16000)
+            y2, sr2 = librosa.load(temp2, sr=16000)
+            y_ref, sr_ref = librosa.load(cat1_path, sr=16000)
 
-# ========== PEMENANG ==========
-if st.session_state.human1_processed and st.session_state.human2_processed:
-    if st.session_state.human1_audio and st.session_state.human2_audio:
-        _, _, s1 = st.session_state.human1_audio
-        _, _, s2 = st.session_state.human2_audio
+            mfcc1  = np.mean(librosa.feature.mfcc(y=y1, sr=sr1, n_mfcc=13), axis=1)
+            mfcc2  = np.mean(librosa.feature.mfcc(y=y2, sr=sr2, n_mfcc=13), axis=1)
+            mfcc_r = np.mean(librosa.feature.mfcc(y=y_ref, sr=sr_ref, n_mfcc=13), axis=1)
+
+            x = np.arange(13)
+            fig_win, ax_win = plt.subplots(figsize=(10, 3.5))
+            ax_win.plot(x, mfcc_r, color='#0090C0', linewidth=2, marker='o', markersize=5, label='Cat.mp3 (referensi)')
+            ax_win.plot(x, mfcc1, color='#00A050', linewidth=1.5, marker='s', markersize=4, label=f'Manusia 1 (skor {sim1:.3f})')
+            ax_win.plot(x, mfcc2, color='#FF6B35', linewidth=1.5, marker='^', markersize=4, label=f'Manusia 2 (skor {sim2:.3f})')
+            ax_win.set_title("Mean MFCC — Manusia 1 vs Manusia 2 vs Kucing")
+            ax_win.set_xlabel("Koefisien MFCC ke-")
+            ax_win.set_ylabel("Nilai rata-rata")
+            ax_win.set_xticks(x)
+            ax_win.set_xticklabels([str(i+1) for i in x])
+            ax_win.legend(fontsize=8)
+            ax_win.grid(True)
+            fig_win.tight_layout()
+            st.pyplot(fig_win)
+            st.caption("Kurva yang lebih dekat ke biru (Cat.mp3) = spektrum lebih mirip kucing.")
+        except Exception as e:
+            st.warning(f"Visualisasi perbandingan tidak tersedia: {e}")
+
+    # Reset button
+    if st.session_state.human1_processed or st.session_state.human2_processed:
         st.markdown("<br>", unsafe_allow_html=True)
+        col_space1, col_btn, col_space3 = st.columns([1, 1, 1])
+        with col_btn:
+            if st.button("🔄 Reset Rekaman", key="reset_human", use_container_width=True):
+                for key in ['human1_audio', 'human2_audio']:
+                    if st.session_state[key]:
+                        try: os.remove(st.session_state[key][0])
+                        except: pass
+                st.session_state.human1_audio = None
+                st.session_state.human2_audio = None
+                st.session_state.human1_processed = False
+                st.session_state.human2_processed = False
+                st.rerun()
 
-        if abs(s1 - s2) < 0.02:
-            winner_html = """
-            <div style="background:linear-gradient(135deg,#FFF8E0,#FFFBE8); border:1px solid #C08000; border-radius:14px; padding:1.2rem 1.6rem; text-align:center">
-                <div style="font-size:1.6rem">🤝</div>
-                <div style="font-size:1.1rem; font-weight:700; color:#7A5000; margin-top:0.4rem">Seri! Keduanya hampir sama miripnya.</div>
-            </div>"""
-        elif s1 > s2:
-            winner_html = f"""
-            <div style="background:linear-gradient(135deg,#F0FFF8,#E0FFE8); border:1px solid #00C060; border-radius:14px; padding:1.2rem 1.6rem; text-align:center">
-                <div style="font-size:1.6rem">🏆</div>
-                <div style="font-size:1.1rem; font-weight:700; color:#006030; margin-top:0.4rem">Manusia 1 menang! Skor {s1:.3f} vs {s2:.3f}</div>
-                <div style="font-size:0.8rem; color:#556070; margin-top:0.3rem">Suara Manusia 1 lebih mirip kucing secara akustik.</div>
-            </div>"""
-        else:
-            winner_html = f"""
-            <div style="background:linear-gradient(135deg,#F0FFF8,#E0FFE8); border:1px solid #00C060; border-radius:14px; padding:1.2rem 1.6rem; text-align:center">
-                <div style="font-size:1.6rem">🏆</div>
-                <div style="font-size:1.1rem; font-weight:700; color:#006030; margin-top:0.4rem">Manusia 2 menang! Skor {s2:.3f} vs {s1:.3f}</div>
-                <div style="font-size:0.8rem; color:#556070; margin-top:0.3rem">Suara Manusia 2 lebih mirip kucing secara akustik.</div>
-            </div>"""
+rekaman_challenge_section()
 
-        st.markdown(winner_html, unsafe_allow_html=True)
-
-# ========== TOMBOL RESET ==========
-if st.session_state.human1_processed or st.session_state.human2_processed:
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_space1, col_btn, col_space3 = st.columns([1, 1, 1])
-    with col_btn:
-        if st.button("🔄 Reset Rekaman", key="reset_human", use_container_width=True):
-            for key in ['human1_audio', 'human2_audio']:
-                if st.session_state[key]:
-                    try:
-                        os.remove(st.session_state[key][0])
-                    except:
-                        pass
-            st.session_state.human1_audio = None
-            st.session_state.human2_audio = None
-            st.session_state.human1_processed = False
-            st.session_state.human2_processed = False
-            st.rerun()
-
-# ============================================================
 # ========== EXPLORE SECTION ==========
-# ============================================================
 st.markdown("---")
 st.markdown('<div class="section-pill">🧪 Explore</div>', unsafe_allow_html=True)
 st.header("Jelajahi Fitur Voice Lab")
@@ -1009,7 +980,7 @@ st.markdown("---")
 st.markdown("""
 <div style="text-align:center; padding:1rem 0 0.5rem">
     <span style="font-family:'Space Mono',monospace; font-size:0.62rem; color:#AABBCC; letter-spacing:3px; text-transform:uppercase">
-        Voice Lab — Audio Processing Playground · MFCC + DTW Engine
+        Voice Lab — Audio Processing Playground
     </span>
 </div>
 """, unsafe_allow_html=True)
