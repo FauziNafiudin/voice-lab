@@ -801,6 +801,31 @@ if "human2_processed" not in st.session_state: st.session_state.human2_processed
 
 col_h1, col_h2 = st.columns(2)
 
+def get_mfcc_sequence(file_path, sr=16000, n_mfcc=13, normalize=True, apply_noise_reduction=True):
+    try:
+        y, sr = librosa.load(file_path, sr=sr)
+        if len(y) < sr * 0.5:
+            st.warning("Rekaman terlalu pendek (minimal 0.5 detik).")
+            return None
+        
+        # ─── FITUR TAMBAHAN: NOISE REDUCTION (SPECTRAL SUBTRACTION) ───
+        if apply_noise_reduction:
+            stft = librosa.stft(y)
+            stft_db = librosa.amplitude_to_db(np.abs(stft), ref=np.max)
+            mask = stft_db > -40 
+            stft_clean = stft * mask
+            y = librosa.istft(stft_clean)
+            
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
+        if normalize:
+            mean = np.mean(mfcc, axis=1, keepdims=True)
+            std = np.std(mfcc, axis=1, keepdims=True) + 1e-8
+            mfcc = (mfcc - mean) / std
+        return mfcc.T
+    except Exception as e:
+        st.error(f"Gagal memuat {file_path}: {e}")
+        return None
+
 with col_h1:
     st.markdown("**👤 Manusia 1**")
     audio1 = st.audio_input("Rekam suara tiruan kucing (Manusia 1)", key="human1_input")
