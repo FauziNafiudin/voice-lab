@@ -760,28 +760,46 @@ if seq_ref is None:
     st.error("Gagal memproses Cat.mp3.")
     st.stop()
 
-st.markdown("**🎵 Suara Referensi**")
-st.audio(cat1_path, format="audio/mpeg")
-st.caption("Cat.mp3 — dijadikan patokan perbandingan.")
+st.markdown("---")
+st.markdown("**🎵 Perbandingan Suara Kucing Asli**")
 
+# Membagi layout menjadi dua kolom yang sama besar
+col_cat1, col_cat2 = st.columns(2)
+
+with col_cat1:
+    st.markdown("**Kucing 1 (Cat.mp3)**")
+    st.audio(cat1_path, format="audio/mpeg")
+    st.caption("Suara referensi / patokan.")
+
+with col_cat2:
+    if cat2_available:
+        st.markdown("**Kucing 2 (Cat2.mp3)**")
+        st.audio(cat2_path, format="audio/mpeg")
+        st.caption("Suara kucing pembanding.")
+    else:
+        st.info("File Cat2.mp3 tidak tersedia.")
+
+# Menampilkan hasil skor di tengah bawah
 if cat2_available:
-    st.subheader("Cat.mp3 vs Cat2.mp3")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
     seq_cat2 = get_embedding(cat2_path)
     if seq_cat2 is not None:
         sim_cat2 = compute_similarity(seq_ref, seq_cat2)
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.audio(cat2_path, format="audio/mpeg")
-        with col2:
-            st.metric("Kemiripan Cat.mp3 vs Cat2.mp3", f"{sim_cat2:.3f}")
+        
+        # Membuat 3 kolom, menggunakan kolom tengah yang lebih besar agar terpusat
+        _, col_hasil_tengah, _ = st.columns([1, 2, 1])
+        
+        with col_hasil_tengah:
+            st.metric("Skor Kemiripan (Resemblyzer)", f"{sim_cat2:.3f}")
+            
+            # Menampilkan interpretasi dengan warna alert sesuai skor
             if sim_cat2 > 0.6:
-                st.success("✅ Sangat mirip — mungkin kucing yang sama.")
+                st.success("✅ **Sangat mirip** — mungkin berasal dari kucing yang sama.")
             elif sim_cat2 > 0.4:
-                st.info("🔊 Cukup mirip, ada perbedaan.")
+                st.info("🔊 **Cukup mirip**, namun memiliki perbedaan karakter.")
             else:
-                st.warning("⚠️ Berbeda — ekspresi atau jenis berbeda.")
-else:
-    st.info("File Cat2.mp3 tidak tersedia. Bagian ini dilewati.")
+                st.warning("⚠️ **Berbeda** — kemungkinan ekspresi atau jenis kucing yang berbeda.")
 
 # ========== TANTANGAN ==========
 st.subheader("🎙️ Tantangan: Siapa yang Lebih Mirip Kucing?")
