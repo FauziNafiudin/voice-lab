@@ -863,28 +863,6 @@ if st.session_state.human1_processed or st.session_state.human2_processed:
             st.session_state.human2_processed = False
             st.rerun()
 
-# --- HASIL AKHIR ---
-if st.session_state.human1_processed and st.session_state.human2_processed:
-    st.markdown("---")
-    st.markdown('<div class="section-pill">🏆 Hasil Akhir</div>', unsafe_allow_html=True)
-    _, _, sim1 = st.session_state.human1_audio
-    _, _, sim2 = st.session_state.human2_audio
-    
-    cb1, cb2 = st.columns(2)
-    with cb1:
-        st.progress(sim1) # Menghapus metric ganda, hanya menyisakan bar
-    with cb2:
-        st.progress(sim2) # Menghapus metric ganda, hanya menyisakan bar
-        
-    if sim1 > sim2:
-        st.success(f"🎉 **Manusia 1** lebih mirip kucing! (selisih {sim1 - sim2:.3f})")
-    elif sim2 > sim1:
-        st.success(f"🎉 **Manusia 2** lebih mirip kucing! (selisih {sim2 - sim1:.3f})")
-    else:
-        st.info("Keduanya sama persis!")
-else:
-    st.info("Rekam kedua suara manusia terlebih dahulu untuk melihat siapa yang lebih mirip kucing.")
-
 # ========== EXPLORE SECTION ==========
 st.markdown("---")
 st.markdown('<div class="section-pill">🧪 Explore</div>', unsafe_allow_html=True)
