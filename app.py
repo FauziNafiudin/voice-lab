@@ -3,9 +3,8 @@ import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 import os
-from sklearn.metrics.pairwise import cosine_similarity
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
+from pathlib import Path
+from resemblyzer import VoiceEncoder, preprocess_wav
 
 # ========== KONFIGURASI HALAMAN ==========
 st.set_page_config(
@@ -14,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ========== CUSTOM CSS PREMIUM AUDIO STUDIO ==========
+# ========== CUSTOM CSS PREMIUM AUDIO STUDIO — WHITE THEME ==========
 st.markdown("""
 <style>
     /* ====== IMPORT COMFORTAA ====== */
@@ -22,8 +21,8 @@ st.markdown("""
 
     /* ====== BASE ====== */
     .stApp {
-        background: #180D2E; /* Deep Dark Violet */
-        color: #F4F0FF;
+        background: #FFFFFF;
+        color: #1A1A2E;
         font-family: 'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
@@ -32,23 +31,22 @@ st.markdown("""
         position: fixed;
         top: -200px; left: -200px;
         width: 600px; height: 600px;
-        background: radial-gradient(circle, rgba(138, 35, 135, 0.08) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(0,150,80,0.03) 0%, transparent 70%);
         pointer-events: none;
         z-index: 0;
     }
 
     /* ====== SIDEBAR ====== */
     [data-testid="stSidebar"] {
-        background: #120924 !important; /* Slightly darker than base */
-        border-right: 1px solid rgba(0, 240, 255, 0.12);
+        background: #F5F7FA !important;
+        border-right: 1px solid rgba(0,180,100,0.15);
     }
     [data-testid="stSidebar"]::before {
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 3px;
-        /* Sunset gradient matching the 'Get Started' button */
-        background: linear-gradient(90deg, #8A2387, #E94057, #F27121);
+        background: linear-gradient(90deg, #00C060, #00B4D8, #7C3AED);
     }
 
     /* ====== MAIN CONTENT ====== */
@@ -65,29 +63,28 @@ st.markdown("""
     }
     h2 {
         font-size: 1.55rem !important;
-        color: #FFFFFF !important;
+        color: #1A1A2E !important;
         margin-top: 2.2rem !important;
         padding-bottom: 0.5rem;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
+        border-bottom: 1px solid rgba(0,0,0,0.08);
     }
     h2::before {
         content: '// ';
-        color: #00F0FF; /* Neon Cyan */
+        color: #00C060;
         font-family: 'Comfortaa', monospace;
         font-size: 0.85rem;
         font-weight: 400;
     }
     h3 {
         font-size: 1.2rem !important;
-        color: #D0C4EA !important;
+        color: #3A4A60 !important;
         font-weight: 500;
     }
 
     /* ====== HERO BANNER ====== */
     .hero-banner {
-        /* Deep violet gradient card */
-        background: linear-gradient(135deg, #2B1854 0%, #201140 50%, #180D2E 100%);
-        border: 1px solid rgba(0, 240, 255, 0.15);
+        background: linear-gradient(135deg, #F0FFF8 0%, #E8F5FF 50%, #F5F0FF 100%);
+        border: 1px solid rgba(0,200,100,0.2);
         border-radius: 20px;
         padding: 2rem 2.5rem;
         margin-bottom: 2rem;
@@ -99,7 +96,7 @@ st.markdown("""
         position: absolute;
         width: 250px;
         height: 250px;
-        background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(0,200,100,0.06) 0%, transparent 70%);
         pointer-events: none;
     }
     .hero-banner::before {
@@ -107,12 +104,11 @@ st.markdown("""
     }
     .hero-banner::after {
         bottom: -50px; left: 30%;
-        background: radial-gradient(circle, rgba(233, 64, 87, 0.08) 0%, transparent 70%);
     }
     .hero-tagline {
         font-family: 'Comfortaa', monospace;
         font-size: 0.75rem;
-        color: #00F0FF;
+        color: #00A050;
         letter-spacing: 2px;
         text-transform: uppercase;
         margin-bottom: 0.7rem;
@@ -122,13 +118,13 @@ st.markdown("""
         font-family: 'Comfortaa', sans-serif;
         font-size: 2.6rem;
         font-weight: 700;
-        color: #FFFFFF;
+        color: #1A1A2E;
         line-height: 1.15;
         margin-bottom: 0.8rem;
     }
-    .hero-title .green { color: #00F0FF; } /* Reusing your .green class but changing actual color to Cyan */
+    .hero-title .green { color: #00A050; }
     .hero-desc {
-        color: #A695C9;
+        color: #556070;
         font-size: 1rem;
         line-height: 1.65;
         max-width: 620px;
@@ -142,10 +138,9 @@ st.markdown("""
     .waveform-deco span {
         display: inline-block;
         width: 4px;
-        /* Gradient matching the right waveform in the image */
-        background: linear-gradient(180deg, #00F0FF, #FF007F);
+        background: linear-gradient(180deg, #00C060, #00B4D8);
         border-radius: 2px;
-        opacity: 0.8;
+        opacity: 0.5;
         animation: wavepulse 1.2s ease-in-out infinite alternate;
     }
     @keyframes wavepulse {
@@ -155,9 +150,9 @@ st.markdown("""
 
     /* ====== STEP CARDS ====== */
     .step-card {
-        background: linear-gradient(135deg, #25144A, #1C0F37);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-left: 3px solid #00F0FF;
+        background: #F8FAFC;
+        border: 1px solid rgba(0,0,0,0.07);
+        border-left: 3px solid #00C060;
         border-radius: 12px;
         padding: 1rem 1.2rem;
         margin-bottom: 1rem;
@@ -166,7 +161,7 @@ st.markdown("""
     .step-num {
         font-family: 'Comfortaa', monospace;
         font-size: 0.65rem;
-        color: #00F0FF;
+        color: #00A050;
         letter-spacing: 1.5px;
         text-transform: uppercase;
         margin-bottom: 0.3rem;
@@ -174,12 +169,12 @@ st.markdown("""
     .step-title {
         font-size: 1rem;
         font-weight: 600;
-        color: #F4F0FF;
+        color: #1A1A2E;
         margin-bottom: 0.3rem;
     }
     .step-desc {
         font-size: 0.85rem;
-        color: #9481B5;
+        color: #556070;
         line-height: 1.5;
     }
 
@@ -188,13 +183,13 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        background: rgba(0, 240, 255, 0.1);
-        border: 1px solid rgba(0, 240, 255, 0.25);
+        background: rgba(0,180,80,0.08);
+        border: 1px solid rgba(0,180,80,0.2);
         border-radius: 40px;
         padding: 0.2rem 0.8rem;
         font-family: 'Comfortaa', monospace;
         font-size: 0.7rem;
-        color: #00F0FF;
+        color: #00A050;
         letter-spacing: 1.2px;
         text-transform: uppercase;
         margin-bottom: 0.6rem;
@@ -203,9 +198,9 @@ st.markdown("""
     /* ====== BADGES ====== */
     .badge {
         display: inline-block;
-        background: rgba(0, 240, 255, 0.1);
-        border: 1px solid rgba(0, 240, 255, 0.25);
-        color: #00F0FF;
+        background: rgba(0,180,80,0.08);
+        border: 1px solid rgba(0,180,80,0.22);
+        color: #00A050;
         font-family: 'Comfortaa', monospace;
         font-size: 0.62rem;
         letter-spacing: 0.8px;
@@ -216,20 +211,19 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     .badge.blue {
-        background: rgba(233, 64, 87, 0.15);
-        border-color: rgba(233, 64, 87, 0.3);
-        color: #FF5C8A; /* Pinkish-Magenta */
+        background: rgba(0,150,200,0.08);
+        border-color: rgba(0,150,200,0.22);
+        color: #0090C0;
     }
     .badge.purple {
-        background: rgba(242, 113, 33, 0.15);
-        border-color: rgba(242, 113, 33, 0.3);
-        color: #FF984B; /* Sunset Orange */
+        background: rgba(100,50,200,0.08);
+        border-color: rgba(100,50,200,0.22);
+        color: #6030B0;
     }
 
     /* ====== BUTTONS ====== */
     .stButton > button {
-        /* "Get Started" gradient from the template */
-        background: linear-gradient(90deg, #8A2387, #E94057, #F27121) !important;
+        background: linear-gradient(135deg, #00C060, #009A4E) !important;
         color: #FFFFFF !important;
         border: none !important;
         border-radius: 10px !important;
@@ -238,25 +232,25 @@ st.markdown("""
         font-size: 0.85rem !important;
         padding: 0.5rem 1.2rem !important;
         transition: 0.2s ease !important;
-        box-shadow: 0 0 15px rgba(233, 64, 87, 0.35) !important;
+        box-shadow: 0 2px 8px rgba(0,180,80,0.2) !important;
     }
     .stButton > button:hover {
-        background: linear-gradient(90deg, #A82E8A, #F54A62, #FC8132) !important;
-        box-shadow: 0 0 25px rgba(233, 64, 87, 0.55) !important;
+        background: linear-gradient(135deg, #00E676, #00C060) !important;
+        box-shadow: 0 4px 16px rgba(0,200,80,0.25) !important;
         transform: translateY(-1px);
     }
 
     /* ====== METRICS ====== */
     [data-testid="stMetric"] {
-        background: #221340 !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
+        background: #F0F4F8 !important;
+        border: 1px solid rgba(0,0,0,0.07) !important;
         border-radius: 12px !important;
         padding: 0.8rem 1rem !important;
     }
     [data-testid="stMetricLabel"] {
         font-family: 'Comfortaa', monospace !important;
         font-size: 0.6rem !important;
-        color: #9481B5 !important;
+        color: #7A8FAA !important;
         letter-spacing: 1.2px !important;
         text-transform: uppercase !important;
     }
@@ -264,32 +258,32 @@ st.markdown("""
         font-family: 'Comfortaa', sans-serif !important;
         font-weight: 700 !important;
         font-size: 1.8rem !important;
-        color: #00F0FF !important;
+        color: #00A050 !important;
     }
 
     /* ====== EXPANDERS ====== */
     [data-testid="stExpander"] {
-        background: #1C0F37 !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
+        background: #F8FAFC !important;
+        border: 1px solid rgba(0,0,0,0.08) !important;
         border-radius: 12px !important;
         overflow: hidden;
     }
     [data-testid="stExpander"] summary {
         font-family: 'Comfortaa', sans-serif !important;
         font-weight: 500 !important;
-        color: #D0C4EA !important;
+        color: #556070 !important;
     }
     [data-testid="stExpander"] summary:hover {
-        color: #00F0FF !important;
+        color: #00A050 !important;
     }
 
     /* ====== PROGRESS BAR ====== */
     [data-testid="stProgressBar"] > div > div {
-        background: linear-gradient(90deg, #00F0FF, #E94057) !important;
+        background: linear-gradient(90deg, #00C060, #00B4D8) !important;
         border-radius: 999px !important;
     }
     [data-testid="stProgressBar"] > div {
-        background: rgba(255,255,255,0.05) !important;
+        background: rgba(0,0,0,0.07) !important;
         border-radius: 999px !important;
     }
 
@@ -297,99 +291,138 @@ st.markdown("""
     .stCaption, [data-testid="stCaptionContainer"] {
         font-family: 'Comfortaa', monospace !important;
         font-size: 0.68rem !important;
-        color: #7A66A3 !important;
+        color: #8A9AB0 !important;
     }
 
     /* ====== ALERTS ====== */
     .stSuccess > div {
-        background: rgba(0, 240, 255, 0.08) !important;
-        border-left: 3px solid #00F0FF !important;
+        background: rgba(0,180,80,0.07) !important;
+        border-left: 3px solid #00C060 !important;
         border-radius: 8px !important;
-        color: #A0F4FF !important;
+        color: #006030 !important;
     }
     .stInfo > div {
-        background: rgba(233, 64, 87, 0.08) !important;
-        border-left: 3px solid #E94057 !important;
+        background: rgba(0,150,200,0.07) !important;
+        border-left: 3px solid #00A0C8 !important;
         border-radius: 8px !important;
     }
     .stWarning > div {
-        background: rgba(242, 113, 33, 0.08) !important;
-        border-left: 3px solid #F27121 !important;
+        background: rgba(200,130,0,0.07) !important;
+        border-left: 3px solid #C08000 !important;
         border-radius: 8px !important;
     }
     .stError > div {
-        background: rgba(255, 60, 60, 0.08) !important;
-        border-left: 3px solid #FF3C3C !important;
+        background: rgba(200,50,50,0.07) !important;
+        border-left: 3px solid #C03030 !important;
         border-radius: 8px !important;
     }
 
     /* ====== AUDIO INPUT ====== */
     .stAudioInput > div {
-        background: #221340 !important;
-        border: 1px solid rgba(0, 240, 255, 0.15) !important;
+        background: #F0F4F8 !important;
+        border: 1px solid rgba(0,180,80,0.15) !important;
         border-radius: 12px !important;
     }
 
     /* ====== DIVIDER ====== */
     hr {
         border: none !important;
-        border-top: 1px solid rgba(255,255,255,0.08) !important;
+        border-top: 1px solid rgba(0,0,0,0.07) !important;
         margin: 2rem 0 !important;
     }
 
     /* ====== PAGE LINK ====== */
     [data-testid="stPageLink"] {
-        background: #221340 !important;
-        border: 1px solid rgba(0, 240, 255, 0.15) !important;
+        background: #F0F4F8 !important;
+        border: 1px solid rgba(0,180,80,0.15) !important;
         border-radius: 12px !important;
         transition: 0.2s !important;
     }
     [data-testid="stPageLink"]:hover {
-        border-color: rgba(233, 64, 87, 0.5) !important;
-        box-shadow: 0 0 16px rgba(233, 64, 87, 0.2) !important;
+        border-color: rgba(0,180,80,0.35) !important;
+        box-shadow: 0 0 16px rgba(0,180,80,0.08) !important;
     }
 
     /* ====== SCROLLBAR ====== */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #180D2E; }
+    ::-webkit-scrollbar-track { background: #F5F7FA; }
     ::-webkit-scrollbar-thumb {
-        background: rgba(0, 240, 255, 0.25);
+        background: rgba(0,180,80,0.2);
         border-radius: 3px;
     }
     ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 240, 255, 0.5);
+        background: rgba(0,180,80,0.4);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ========== MATPLOTLIB GLOBAL STYLE ==========
+# ========== MATPLOTLIB GLOBAL STYLE — WHITE THEME ==========
 plt.rcParams.update({
-    'figure.facecolor': '#180D2E', # Deep violet matching stApp
-    'axes.facecolor': '#221340',   # Slightly lighter card background
-    'axes.edgecolor': '#3A2463',
-    'axes.labelcolor': '#9481B5',
-    'axes.titlecolor': '#D0C4EA',
+    'figure.facecolor': '#FFFFFF',
+    'axes.facecolor': '#F8FAFC',
+    'axes.edgecolor': '#CCCCCC',
+    'axes.labelcolor': '#444444',
+    'axes.titlecolor': '#222222',
     'axes.titlesize': 11,
     'axes.labelsize': 9,
-    'xtick.color': '#65508F',
-    'ytick.color': '#65508F',
+    'xtick.color': '#666666',
+    'ytick.color': '#666666',
     'xtick.labelsize': 8,
     'ytick.labelsize': 8,
-    'grid.color': '#3A2463',
+    'grid.color': '#DDDDDD',
     'grid.linestyle': '--',
     'grid.alpha': 0.5,
-    'text.color': '#A695C9',
+    'text.color': '#444444',
     'font.family': 'monospace',
     'lines.linewidth': 1.4,
 })
+
+# ========== HERO HEADER ==========
+st.markdown("""
+<div class="hero-banner">
+    <span class="hero-tagline">🎤 Interactive Audio Lab</span>
+    <div class="hero-title">Voice <span class="green">Lab</span></div>
+    <p class="hero-desc">
+        Jelajahi dunia <strong style="color:#1A1A2E">audio processing</strong> secara interaktif —
+        dari gelombang sintetik sampai pengenalan suara berbasis MFCC + DTW.
+        Rekam, bandingkan, dan rasakan sendiri cara komputer "mendengar".
+    </p>
+    <div class="waveform-deco">
+        <span style="height:8px;  animation-delay:0s"></span>
+        <span style="height:22px; animation-delay:0.10s"></span>
+        <span style="height:36px; animation-delay:0.20s"></span>
+        <span style="height:14px; animation-delay:0.30s"></span>
+        <span style="height:44px; animation-delay:0.40s"></span>
+        <span style="height:26px; animation-delay:0.50s"></span>
+        <span style="height:38px; animation-delay:0.60s"></span>
+        <span style="height:12px; animation-delay:0.70s"></span>
+        <span style="height:30px; animation-delay:0.80s"></span>
+        <span style="height:46px; animation-delay:0.90s"></span>
+        <span style="height:18px; animation-delay:1.00s"></span>
+        <span style="height:32px; animation-delay:0.05s"></span>
+        <span style="height:42px; animation-delay:0.15s"></span>
+        <span style="height:10px; animation-delay:0.25s"></span>
+        <span style="height:28px; animation-delay:0.35s"></span>
+        <span style="height:40px; animation-delay:0.45s"></span>
+        <span style="height:20px; animation-delay:0.55s"></span>
+        <span style="height:34px; animation-delay:0.65s"></span>
+        <span style="height:16px; animation-delay:0.75s"></span>
+        <span style="height:48px; animation-delay:0.85s"></span>
+        <span style="height:24px; animation-delay:0.95s"></span>
+        <span style="height:38px; animation-delay:0.08s"></span>
+        <span style="height:12px; animation-delay:0.18s"></span>
+        <span style="height:44px; animation-delay:0.28s"></span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ========== BAGIAN 1: APA ITU AUDIO? ==========
 st.markdown('<div class="section-pill">📡 Bab 01</div>', unsafe_allow_html=True)
 st.header("Apa Itu Audio?")
 st.markdown("""
-<p style="color:#6A7A95; font-size:0.95rem; line-height:1.8; margin-bottom:1.5rem">
-Audio adalah <strong style="color:#C8D0E0">getaran udara</strong> yang ditangkap telinga dan direpresentasikan
-sebagai sinyal digital oleh komputer. Setiap suara punya <strong style="color:#00E676">bentuk gelombang (waveform)</strong>
+<p style="color:#556070; font-size:0.95rem; line-height:1.8; margin-bottom:1.5rem">
+Audio adalah <strong style="color:#1A1A2E">getaran udara</strong> yang ditangkap telinga dan direpresentasikan
+sebagai sinyal digital oleh komputer. Setiap suara punya <strong style="color:#00A050">bentuk gelombang (waveform)</strong>
 yang unik — misalnya, suara kucing mengeong punya pola yang sama sekali berbeda dengan suara manusia.
 </p>
 """, unsafe_allow_html=True)
@@ -402,8 +435,8 @@ sr_synth = 16000
 t_synth = np.linspace(0, 0.1, int(sr_synth * 0.1))
 y_synth = np.sin(2 * np.pi * 400 * t_synth) + 0.5 * np.sin(2 * np.pi * 800 * t_synth)
 fig_synth, ax_synth = plt.subplots(figsize=(9, 2.5))
-ax_synth.plot(t_synth, y_synth, color='#00E676', linewidth=1.2, alpha=0.9)
-ax_synth.fill_between(t_synth, y_synth, alpha=0.08, color='#00E676')
+ax_synth.plot(t_synth, y_synth, color='#00A050', linewidth=1.2, alpha=0.9)
+ax_synth.fill_between(t_synth, y_synth, alpha=0.08, color='#00A050')
 ax_synth.set_title("Waveform Sinyal Sintetik (400 Hz + 800 Hz) — 0.1 detik")
 ax_synth.set_xlabel("Waktu (detik)")
 ax_synth.set_ylabel("Amplitudo")
@@ -422,8 +455,8 @@ with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
         sample_limit = min(2 * sr_cat, len(y_cat))
         t_cat = np.linspace(0, sample_limit / sr_cat, sample_limit)
         fig_cat, ax_cat = plt.subplots(figsize=(9, 2.5))
-        ax_cat.plot(t_cat, y_cat[:sample_limit], color='#00B4D8', linewidth=0.8, alpha=0.9)
-        ax_cat.fill_between(t_cat, y_cat[:sample_limit], alpha=0.07, color='#00B4D8')
+        ax_cat.plot(t_cat, y_cat[:sample_limit], color='#0090C0', linewidth=0.8, alpha=0.9)
+        ax_cat.fill_between(t_cat, y_cat[:sample_limit], alpha=0.07, color='#0090C0')
         ax_cat.set_title("Waveform Asli Cat.mp3 (2 detik pertama)")
         ax_cat.set_xlabel("Waktu (detik)")
         ax_cat.set_ylabel("Amplitudo")
@@ -438,7 +471,7 @@ with st.expander("🐱 Contoh Asli: Waveform Suara Kucing"):
 # ========== BAGIAN 2: BAGAIMANA KOMPUTER PROSES SUARA ==========
 st.markdown('<div class="section-pill" style="margin-top:2rem">🔬 Bab 02</div>', unsafe_allow_html=True)
 st.header("Bagaimana Komputer Memproses Suara?")
-st.markdown('<p style="color:#6A7A95; font-size:0.93rem; margin-bottom:1.5rem">Komputer mengubah gelombang suara menjadi angka, lalu menganalisisnya melalui beberapa tahap berikut.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.93rem; margin-bottom:1.5rem">Komputer mengubah gelombang suara menjadi angka, lalu menganalisisnya melalui beberapa tahap berikut.</p>', unsafe_allow_html=True)
 
 # Overview cards row 1
 c1, c2, c3 = st.columns(3)
@@ -476,12 +509,12 @@ else:
     cat_available = False
     st.warning("File Cat.mp3 tidak ditemukan. Contoh asli tidak tersedia.")
 
-COLORS = ['#00E676', '#FF6B35', '#A78BFA', '#FFD60A', '#00B4D8']
+COLORS = ['#00A050', '#FF6B35', '#6030B0', '#C08000', '#0090C0']
 
 # ========== LANGKAH 1: SAMPLING ==========
 st.subheader("1 — Sampling")
 st.markdown('<span class="badge">Analog → Digital</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; line-height:1.8"><strong style="color:#C8D0E0">Sampling</strong> mengambil nilai amplitudo pada interval waktu tetap. <strong style="color:#00E676">Sample rate</strong> (Hz) = jumlah sampel per detik.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#1A1A2E">Sampling</strong> mengambil nilai amplitudo pada interval waktu tetap. <strong style="color:#00A050">Sample rate</strong> (Hz) = jumlah sampel per detik.</p>', unsafe_allow_html=True)
 
 sr_sintetis = 200
 t_cont = np.linspace(0, 0.1, 1000)
@@ -489,9 +522,9 @@ y_cont = np.sin(2 * np.pi * 50 * t_cont)
 t_sample_sint = np.linspace(0, 0.1, int(sr_sintetis * 0.1))
 y_sample_sint = np.sin(2 * np.pi * 50 * t_sample_sint)
 fig1, ax1 = plt.subplots(figsize=(9, 3))
-ax1.plot(t_cont, y_cont, color='#00B4D8', alpha=0.4, linewidth=1.5, label='Gelombang analog (ilustrasi)')
-ml, sl, bl = ax1.stem(t_sample_sint, y_sample_sint, linefmt='#00E676', markerfmt='o', basefmt=' ', label=f'Sampel ({sr_sintetis} Hz)')
-sl.set_linewidth(1); ml.set_color('#00E676'); ml.set_markersize(5)
+ax1.plot(t_cont, y_cont, color='#0090C0', alpha=0.4, linewidth=1.5, label='Gelombang analog (ilustrasi)')
+ml, sl, bl = ax1.stem(t_sample_sint, y_sample_sint, linefmt='#00A050', markerfmt='o', basefmt=' ', label=f'Sampel ({sr_sintetis} Hz)')
+sl.set_linewidth(1); ml.set_color('#00A050'); ml.set_markersize(5)
 ax1.legend(fontsize=8); ax1.grid(True)
 fig1.tight_layout()
 st.pyplot(fig1)
@@ -504,9 +537,9 @@ if cat_available:
         t_sample_kucing = t_pendek[::step]
         y_sample_kucing = y_pendek[::step]
         fig2, ax2 = plt.subplots(figsize=(9, 3))
-        ax2.plot(t_pendek, y_pendek, color='#00B4D8', alpha=0.3, linewidth=1.2, label='Gelombang asli')
-        ml2, sl2, bl2 = ax2.stem(t_sample_kucing, y_sample_kucing, linefmt='#00E676', markerfmt='o', basefmt=' ', label=f'Sampel ({sr_ilustrasi} Hz)')
-        sl2.set_linewidth(1); ml2.set_color('#00E676'); ml2.set_markersize(5)
+        ax2.plot(t_pendek, y_pendek, color='#0090C0', alpha=0.3, linewidth=1.2, label='Gelombang asli')
+        ml2, sl2, bl2 = ax2.stem(t_sample_kucing, y_sample_kucing, linefmt='#00A050', markerfmt='o', basefmt=' ', label=f'Sampel ({sr_ilustrasi} Hz)')
+        sl2.set_linewidth(1); ml2.set_color('#00A050'); ml2.set_markersize(5)
         ax2.set_xlabel("Waktu (detik)"); ax2.set_ylabel("Amplitudo")
         ax2.set_title("Sampling suara kucing (50 ms)")
         ax2.legend(fontsize=8); ax2.grid(True)
@@ -520,11 +553,11 @@ if cat_available:
 # ========== LANGKAH 2: WAVEFORM ==========
 st.subheader("2 — Representasi Digital (Waveform)")
 st.markdown('<span class="badge">Angka → Visualisasi</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; line-height:1.8">Angka-angka hasil sampling diplot dan dihubungkan garis → <strong style="color:#00E676">Waveform</strong>, bentuk digital suara yang disimpan komputer.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8">Angka-angka hasil sampling diplot dan dihubungkan garis → <strong style="color:#00A050">Waveform</strong>, bentuk digital suara yang disimpan komputer.</p>', unsafe_allow_html=True)
 
 fig3, ax3 = plt.subplots(figsize=(9, 2.5))
-ax3.plot(t_sample_sint, y_sample_sint, color='#A78BFA', marker='o', markersize=4, linewidth=1.2)
-ax3.fill_between(t_sample_sint, y_sample_sint, alpha=0.06, color='#A78BFA')
+ax3.plot(t_sample_sint, y_sample_sint, color='#6030B0', marker='o', markersize=4, linewidth=1.2)
+ax3.fill_between(t_sample_sint, y_sample_sint, alpha=0.06, color='#6030B0')
 ax3.set_title("Waveform sinyal sinus (hasil sampling 200 Hz)")
 ax3.set_xlabel("Waktu (detik)"); ax3.set_ylabel("Amplitudo digital"); ax3.grid(True)
 fig3.tight_layout()
@@ -537,8 +570,8 @@ if cat_available and 'y_sample_kucing' in st.session_state:
         t_samp = st.session_state['t_sample_kucing']
         sr_ilust = st.session_state['sr_ilustrasi']
         fig4, ax4 = plt.subplots(figsize=(9, 2.5))
-        ax4.plot(t_samp, y_samp, color='#A78BFA', marker='o', markersize=4, linewidth=1.2)
-        ax4.fill_between(t_samp, y_samp, alpha=0.06, color='#A78BFA')
+        ax4.plot(t_samp, y_samp, color='#6030B0', marker='o', markersize=4, linewidth=1.2)
+        ax4.fill_between(t_samp, y_samp, alpha=0.06, color='#6030B0')
         ax4.set_title(f"Waveform suara kucing ({len(y_samp)} sampel, {sr_ilust} Hz)")
         ax4.set_xlabel("Waktu (detik)"); ax4.set_ylabel("Amplitudo digital"); ax4.grid(True)
         fig4.tight_layout()
@@ -547,7 +580,7 @@ if cat_available and 'y_sample_kucing' in st.session_state:
 # ========== LANGKAH 3: WINDOWING ==========
 st.subheader("3 — Windowing")
 st.markdown('<span class="badge">Segmentasi</span><span class="badge blue">Frame 25 ms</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; line-height:1.8">Suara panjang dipotong jadi <strong style="color:#00E676">frame pendek 20–50 ms</strong> yang tumpang tindih, lalu setiap frame dianalisis dengan FFT.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8">Suara panjang dipotong jadi <strong style="color:#00A050">frame pendek 20–50 ms</strong> yang tumpang tindih, lalu setiap frame dianalisis dengan FFT.</p>', unsafe_allow_html=True)
 
 durasi_sint = 0.5
 t_sint = np.linspace(0, durasi_sint, int(16000 * durasi_sint))
@@ -557,7 +590,7 @@ hop_durasi = 0.010
 frame_len = int(frame_durasi * 16000)
 hop_len = int(hop_durasi * 16000)
 fig5, ax5 = plt.subplots(figsize=(9, 3))
-ax5.plot(t_sint, y_sint, color='#00B4D8', alpha=0.5, linewidth=1)
+ax5.plot(t_sint, y_sint, color='#0090C0', alpha=0.5, linewidth=1)
 for i in range(5):
     start = i * hop_len
     if start + frame_len < len(t_sint):
@@ -570,7 +603,7 @@ st.caption("Setiap window akan dianalisis dengan FFT untuk melihat frekuensi pad
 if cat_available:
     with st.expander("🐱 Windowing pada suara kucing (2 detik pertama)"):
         fig6, ax6 = plt.subplots(figsize=(9, 3))
-        ax6.plot(t_panjang, y_panjang, color='#00B4D8', alpha=0.45, linewidth=0.8)
+        ax6.plot(t_panjang, y_panjang, color='#0090C0', alpha=0.45, linewidth=0.8)
         for i in range(8):
             start = i * hop_len
             if start + frame_len < len(t_panjang):
@@ -582,7 +615,7 @@ if cat_available:
 # ========== LANGKAH 4: FFT ==========
 st.subheader("4 — FFT (Fast Fourier Transform)")
 st.markdown('<span class="badge">Waktu → Frekuensi</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; line-height:1.8"><strong style="color:#00E676">FFT</strong> mengubah frame dari domain waktu menjadi <strong style="color:#C8D0E0">spektrum frekuensi</strong> — menunjukkan frekuensi apa yang dominan.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#00A050">FFT</strong> mengubah frame dari domain waktu menjadi <strong style="color:#1A1A2E">spektrum frekuensi</strong> — menunjukkan frekuensi apa yang dominan.</p>', unsafe_allow_html=True)
 
 fs_demo = 16000
 frame_demo = np.linspace(0, 0.025, int(0.025 * fs_demo))
@@ -592,8 +625,8 @@ freqs = np.fft.fftfreq(len(y_demo), 1 / fs_demo)
 magnitude = np.abs(fft_vals[:len(fft_vals) // 2])
 freqs_pos = freqs[:len(freqs) // 2]
 fig7, (ax7a, ax7b) = plt.subplots(1, 2, figsize=(9, 3))
-ax7a.plot(frame_demo, y_demo, color='#00B4D8', linewidth=1.2)
-ax7a.fill_between(frame_demo, y_demo, alpha=0.07, color='#00B4D8')
+ax7a.plot(frame_demo, y_demo, color='#0090C0', linewidth=1.2)
+ax7a.fill_between(frame_demo, y_demo, alpha=0.07, color='#0090C0')
 ax7a.set_title("Frame 25 ms (domain waktu)"); ax7a.set_xlabel("Waktu (detik)"); ax7a.grid(True)
 ax7b.plot(freqs_pos, magnitude, color='#FF6B35', linewidth=1.2)
 ax7b.fill_between(freqs_pos, magnitude, alpha=0.09, color='#FF6B35')
@@ -620,7 +653,7 @@ if cat_available:
 # ========== LANGKAH 5: SPEKTROGRAM ==========
 st.subheader("5 — Spektrogram")
 st.markdown('<span class="badge">Waktu + Frekuensi</span><span class="badge purple">2D Heat Map</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; line-height:1.8"><strong style="color:#00E676">Spektrogram</strong> = hasil FFT banyak frame berurutan. Sumbu X = waktu, Y = frekuensi, warna = kekuatan sinyal.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#00A050">Spektrogram</strong> = hasil FFT banyak frame berurutan. Sumbu X = waktu, Y = frekuensi, warna = kekuatan sinyal.</p>', unsafe_allow_html=True)
 
 t_gliss = np.linspace(0, 1, 16000)
 f_gliss = np.linspace(200, 1000, len(t_gliss))
@@ -648,7 +681,7 @@ if cat_available:
 # ========== LANGKAH 6: MFCC ==========
 st.subheader("6 — MFCC (Mel-Frequency Cepstral Coefficients)")
 st.markdown('<span class="badge">Feature Extraction</span><span class="badge blue">13 Koefisien</span>', unsafe_allow_html=True)
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; line-height:1.8"><strong style="color:#00E676">MFCC</strong> adalah fitur ringkas yang meniru persepsi pendengaran manusia. 13–20 koefisien per frame — inilah yang dipakai AI untuk pengenalan suara.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; line-height:1.8"><strong style="color:#00A050">MFCC</strong> adalah fitur ringkas yang meniru persepsi pendengaran manusia. 13–20 koefisien per frame — inilah yang dipakai AI untuk pengenalan suara.</p>', unsafe_allow_html=True)
 
 mfcc_gliss = librosa.feature.mfcc(y=y_gliss, sr=16000, n_mfcc=13)
 fig11, ax11 = plt.subplots(figsize=(9, 3))
@@ -670,59 +703,49 @@ if cat_available:
         st.pyplot(fig12)
         st.caption("MFCC inilah yang dibandingkan untuk mengenali atau mencocokkan suara.")
 
-# ========== BAGIAN 3: DTW CHALLENGE ==========
+# ========== BAGIAN 3: VOICE SIMILARITY CHALLENGE ==========
 st.markdown('<div class="section-pill" style="margin-top:2.5rem">🏆 Bab 03</div>', unsafe_allow_html=True)
-st.header("Pengenalan Suara — DTW Challenge")
+st.header("Pengenalan Suara — Voice Similarity Challenge")
 
 st.markdown("""
-<div style="background:#0D1520; border:1px solid rgba(0,230,120,0.11); border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.5rem">
-<p style="color:#6A7A95; margin:0; font-size:0.92rem; line-height:1.8">
-Untuk membandingkan dua suara, kita hitung jarak antar urutan MFCC menggunakan
-<strong style="color:#00E676">Dynamic Time Warping (DTW)</strong> — tahan terhadap perbedaan durasi dan kecepatan bicara.
-Skor hasil: <strong style="color:#C8D0E0">0–1</strong> (1 = identik).
+<div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.15); border-radius:14px; padding:1.2rem 1.6rem; margin-bottom:1.5rem">
+<p style="color:#556070; margin:0; font-size:0.92rem; line-height:1.8">
+Untuk membandingkan dua suara, sistem menggunakan
+<strong style="color:#00A050">Resemblyzer (GE2E Speaker Embeddings)</strong> — model pretrained dari Google
+yang mengubah audio menjadi vektor 256 dimensi, lalu dihitung dengan
+<strong style="color:#00A050">Cosine Similarity</strong>.
+Skor hasil: <strong style="color:#1A1A2E">0–1</strong> (1 = identik).
 </p>
 </div>
 """, unsafe_allow_html=True)
 
-def get_mfcc_sequence(file_path, sr=16000, n_mfcc=13, normalize=True, apply_noise_reduction=True):
+# ========== LOAD ENCODER (cached) ==========
+@st.cache_resource
+def load_encoder():
+    return VoiceEncoder()
+
+encoder = load_encoder()
+
+def get_embedding(file_path):
     try:
-        y, sr = librosa.load(file_path, sr=sr)
-        if len(y) < sr * 0.5:
+        wav = preprocess_wav(Path(file_path))
+        if len(wav) < 16000 * 0.5:
             st.warning("Rekaman terlalu pendek (minimal 0.5 detik).")
             return None
-        
-        # ─── FITUR TAMBAHAN: NOISE REDUCTION (SPECTRAL SUBTRACTION) ───
-        if apply_noise_reduction:
-            # Transformasi audio ke domain frekuensi (STFT)
-            stft = librosa.stft(y)
-            stft_db = librosa.amplitude_to_db(np.abs(stft), ref=np.max)
-            
-            # Membuat masker bising: Frekuensi di bawah -40 dB (desis/dengung latar belakang) akan diredam
-            # Nilai -40 dB ideal untuk menyaring bising ruangan tanpa merusak karakter suara utama
-            mask = stft_db > -40 
-            stft_clean = stft * mask
-            
-            # Mengembalikan audio bersih ke domain waktu
-            y = librosa.istft(stft_clean)
-            
-        # Ekstraksi fitur MFCC seperti biasa dari audio yang sudah bersih
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
-        if normalize:
-            mean = np.mean(mfcc, axis=1, keepdims=True)
-            std = np.std(mfcc, axis=1, keepdims=True) + 1e-8
-            mfcc = (mfcc - mean) / std
-        return mfcc.T
+        embedding = encoder.embed_utterance(wav)
+        return embedding
     except Exception as e:
-        st.error(f"Gagal memuat {file_path}: {e}")
+        st.error(f"Gagal memproses {file_path}: {e}")
         return None
-def compute_similarity(seq_ref, seq_test):
-    if seq_ref is None or seq_test is None:
+
+def compute_similarity(emb_ref, emb_test):
+    if emb_ref is None or emb_test is None:
         return 0.0
-    distance, _ = fastdtw(seq_ref, seq_test, dist=euclidean)
-    avg_len = (len(seq_ref) + len(seq_test)) / 2
-    normalized_distance = distance / avg_len
-    similarity = np.exp(-normalized_distance)
-    return similarity
+    similarity = np.dot(emb_ref, emb_test) / (
+        np.linalg.norm(emb_ref) * np.linalg.norm(emb_test)
+    )
+    # Rescale dari [-1,1] ke [0,1]
+    return float((similarity + 1) / 2)
 
 cat1_path = "Cat.mp3"
 cat2_path = "Cat2.mp3"
@@ -732,7 +755,7 @@ if not os.path.exists(cat1_path):
     st.stop()
 
 cat2_available = os.path.exists(cat2_path)
-seq_ref = get_mfcc_sequence(cat1_path, normalize=True)
+seq_ref = get_embedding(cat1_path)
 if seq_ref is None:
     st.error("Gagal memproses Cat.mp3.")
     st.stop()
@@ -743,7 +766,7 @@ st.caption("Cat.mp3 — dijadikan patokan perbandingan.")
 
 if cat2_available:
     st.subheader("Cat.mp3 vs Cat2.mp3")
-    seq_cat2 = get_mfcc_sequence(cat2_path, normalize=True)
+    seq_cat2 = get_embedding(cat2_path)
     if seq_cat2 is not None:
         sim_cat2 = compute_similarity(seq_ref, seq_cat2)
         col1, col2 = st.columns([1, 2])
@@ -763,10 +786,10 @@ else:
 # ========== TANTANGAN ==========
 st.subheader("🎙️ Tantangan: Siapa yang Lebih Mirip Kucing?")
 st.markdown("""
-<div style="background:#0D1520; border:1px solid rgba(0,230,120,0.10); border-radius:12px; padding:1rem 1.4rem; margin-bottom:1.2rem">
-<p style="color:#6A7A95; margin:0; font-size:0.88rem; line-height:1.7">
-Rekam dua suara berbeda. Sistem akan membandingkan keduanya dengan <strong style="color:#00E676">Cat.mp3</strong>
-menggunakan MFCC + DTW, lalu menentukan siapa yang lebih mirip kucing!
+<div style="background:#F0FFF8; border:1px solid rgba(0,180,80,0.12); border-radius:12px; padding:1rem 1.4rem; margin-bottom:1.2rem">
+<p style="color:#556070; margin:0; font-size:0.88rem; line-height:1.7">
+Rekam dua suara berbeda. Sistem akan membandingkan keduanya dengan <strong style="color:#00A050">Cat.mp3</strong>
+menggunakan <strong style="color:#00A050">Resemblyzer + Cosine Similarity</strong>, lalu menentukan siapa yang lebih mirip kucing!
 </p>
 </div>
 """, unsafe_allow_html=True)
@@ -785,7 +808,7 @@ with col_h1:
         temp1 = "temp_human1.wav"
         with open(temp1, "wb") as f:
             f.write(audio1.getbuffer())
-        seq1 = get_mfcc_sequence(temp1, normalize=True)
+        seq1 = get_embedding(temp1)
         if seq1 is not None:
             sim1 = compute_similarity(seq_ref, seq1)
             st.session_state.human1_audio = (temp1, seq1, sim1)
@@ -805,7 +828,7 @@ with col_h2:
         temp2 = "temp_human2.wav"
         with open(temp2, "wb") as f:
             f.write(audio2.getbuffer())
-        seq2 = get_mfcc_sequence(temp2, normalize=True)
+        seq2 = get_embedding(temp2)
         if seq2 is not None:
             sim2 = compute_similarity(seq_ref, seq2)
             st.session_state.human2_audio = (temp2, seq2, sim2)
@@ -853,9 +876,8 @@ else:
 st.markdown("---")
 st.markdown('<div class="section-pill">🧪 Explore</div>', unsafe_allow_html=True)
 st.header("Jelajahi Fitur Voice Lab")
-st.markdown('<p style="color:#6A7A95; font-size:0.9rem; margin-bottom:1.2rem">Setelah paham dasarnya, coba fitur-fitur seru berikut!</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#556070; font-size:0.9rem; margin-bottom:1.2rem">Setelah paham dasarnya, coba fitur-fitur seru berikut!</p>', unsafe_allow_html=True)
 
-# Gunakan 3 kolom agar sejajar
 colA, colB, colC = st.columns(3)
 with colA:
     st.page_link(
@@ -880,8 +902,9 @@ with colC:
 st.markdown("---")
 st.markdown("""
 <div style="text-align:center; padding:1rem 0 0.5rem">
-    <span style="font-family:'Space Mono',monospace; font-size:0.62rem; color:#1A2535; letter-spacing:3px; text-transform:uppercase">
+    <span style="font-family:'Space Mono',monospace; font-size:0.62rem; color:#AABBCC; letter-spacing:3px; text-transform:uppercase">
         Voice Lab — Audio Processing Playground
     </span>
 </div>
 """, unsafe_allow_html=True)
+
