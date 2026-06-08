@@ -22,8 +22,8 @@ st.markdown("""
 
     /* ====== BASE ====== */
     .stApp {
-        background: #050810;
-        color: #E2E8F0;
+        background: #180D2E; /* Deep Dark Violet */
+        color: #F4F0FF;
         font-family: 'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
@@ -32,22 +32,23 @@ st.markdown("""
         position: fixed;
         top: -200px; left: -200px;
         width: 600px; height: 600px;
-        background: radial-gradient(circle, rgba(0,230,120,0.05) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(138, 35, 135, 0.08) 0%, transparent 70%);
         pointer-events: none;
         z-index: 0;
     }
 
     /* ====== SIDEBAR ====== */
     [data-testid="stSidebar"] {
-        background: #070C14 !important;
-        border-right: 1px solid rgba(0,230,120,0.10);
+        background: #120924 !important; /* Slightly darker than base */
+        border-right: 1px solid rgba(0, 240, 255, 0.12);
     }
     [data-testid="stSidebar"]::before {
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 3px;
-        background: linear-gradient(90deg, #00E676, #00B4D8, #7C3AED);
+        /* Sunset gradient matching the 'Get Started' button */
+        background: linear-gradient(90deg, #8A2387, #E94057, #F27121);
     }
 
     /* ====== MAIN CONTENT ====== */
@@ -64,28 +65,29 @@ st.markdown("""
     }
     h2 {
         font-size: 1.55rem !important;
-        color: #F0F4FF !important;
+        color: #FFFFFF !important;
         margin-top: 2.2rem !important;
         padding-bottom: 0.5rem;
         border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     h2::before {
         content: '// ';
-        color: #00E676;
+        color: #00F0FF; /* Neon Cyan */
         font-family: 'Comfortaa', monospace;
         font-size: 0.85rem;
         font-weight: 400;
     }
     h3 {
         font-size: 1.2rem !important;
-        color: #B0C4DE !important;
+        color: #D0C4EA !important;
         font-weight: 500;
     }
 
     /* ====== HERO BANNER ====== */
     .hero-banner {
-        background: linear-gradient(135deg, #0D1520 0%, #0A1A1A 50%, #060D1A 100%);
-        border: 1px solid rgba(0,230,120,0.14);
+        /* Deep violet gradient card */
+        background: linear-gradient(135deg, #2B1854 0%, #201140 50%, #180D2E 100%);
+        border: 1px solid rgba(0, 240, 255, 0.15);
         border-radius: 20px;
         padding: 2rem 2.5rem;
         margin-bottom: 2rem;
@@ -97,7 +99,7 @@ st.markdown("""
         position: absolute;
         width: 250px;
         height: 250px;
-        background: radial-gradient(circle, rgba(0,230,120,0.06) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, transparent 70%);
         pointer-events: none;
     }
     .hero-banner::before {
@@ -105,11 +107,12 @@ st.markdown("""
     }
     .hero-banner::after {
         bottom: -50px; left: 30%;
+        background: radial-gradient(circle, rgba(233, 64, 87, 0.08) 0%, transparent 70%);
     }
     .hero-tagline {
         font-family: 'Comfortaa', monospace;
         font-size: 0.75rem;
-        color: #00E676;
+        color: #00F0FF;
         letter-spacing: 2px;
         text-transform: uppercase;
         margin-bottom: 0.7rem;
@@ -123,9 +126,9 @@ st.markdown("""
         line-height: 1.15;
         margin-bottom: 0.8rem;
     }
-    .hero-title .green { color: #00E676; }
+    .hero-title .green { color: #00F0FF; } /* Reusing your .green class but changing actual color to Cyan */
     .hero-desc {
-        color: #7A8FAA;
+        color: #A695C9;
         font-size: 1rem;
         line-height: 1.65;
         max-width: 620px;
@@ -139,9 +142,10 @@ st.markdown("""
     .waveform-deco span {
         display: inline-block;
         width: 4px;
-        background: linear-gradient(180deg, #00E676, #00B4D8);
+        /* Gradient matching the right waveform in the image */
+        background: linear-gradient(180deg, #00F0FF, #FF007F);
         border-radius: 2px;
-        opacity: 0.6;
+        opacity: 0.8;
         animation: wavepulse 1.2s ease-in-out infinite alternate;
     }
     @keyframes wavepulse {
@@ -151,9 +155,9 @@ st.markdown("""
 
     /* ====== STEP CARDS ====== */
     .step-card {
-        background: linear-gradient(135deg, #0D1520, #0A1218);
+        background: linear-gradient(135deg, #25144A, #1C0F37);
         border: 1px solid rgba(255,255,255,0.06);
-        border-left: 3px solid #00E676;
+        border-left: 3px solid #00F0FF;
         border-radius: 12px;
         padding: 1rem 1.2rem;
         margin-bottom: 1rem;
@@ -162,7 +166,7 @@ st.markdown("""
     .step-num {
         font-family: 'Comfortaa', monospace;
         font-size: 0.65rem;
-        color: #00E676;
+        color: #00F0FF;
         letter-spacing: 1.5px;
         text-transform: uppercase;
         margin-bottom: 0.3rem;
@@ -170,12 +174,12 @@ st.markdown("""
     .step-title {
         font-size: 1rem;
         font-weight: 600;
-        color: #E8F0FF;
+        color: #F4F0FF;
         margin-bottom: 0.3rem;
     }
     .step-desc {
         font-size: 0.85rem;
-        color: #6A7A95;
+        color: #9481B5;
         line-height: 1.5;
     }
 
@@ -184,13 +188,13 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        background: rgba(0,230,120,0.08);
-        border: 1px solid rgba(0,230,120,0.2);
+        background: rgba(0, 240, 255, 0.1);
+        border: 1px solid rgba(0, 240, 255, 0.25);
         border-radius: 40px;
         padding: 0.2rem 0.8rem;
         font-family: 'Comfortaa', monospace;
         font-size: 0.7rem;
-        color: #00E676;
+        color: #00F0FF;
         letter-spacing: 1.2px;
         text-transform: uppercase;
         margin-bottom: 0.6rem;
@@ -199,9 +203,9 @@ st.markdown("""
     /* ====== BADGES ====== */
     .badge {
         display: inline-block;
-        background: rgba(0,230,120,0.08);
-        border: 1px solid rgba(0,230,120,0.22);
-        color: #00E676;
+        background: rgba(0, 240, 255, 0.1);
+        border: 1px solid rgba(0, 240, 255, 0.25);
+        color: #00F0FF;
         font-family: 'Comfortaa', monospace;
         font-size: 0.62rem;
         letter-spacing: 0.8px;
@@ -212,20 +216,21 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     .badge.blue {
-        background: rgba(0,180,216,0.08);
-        border-color: rgba(0,180,216,0.22);
-        color: #00B4D8;
+        background: rgba(233, 64, 87, 0.15);
+        border-color: rgba(233, 64, 87, 0.3);
+        color: #FF5C8A; /* Pinkish-Magenta */
     }
     .badge.purple {
-        background: rgba(124,58,237,0.08);
-        border-color: rgba(124,58,237,0.22);
-        color: #A78BFA;
+        background: rgba(242, 113, 33, 0.15);
+        border-color: rgba(242, 113, 33, 0.3);
+        color: #FF984B; /* Sunset Orange */
     }
 
     /* ====== BUTTONS ====== */
     .stButton > button {
-        background: linear-gradient(135deg, #00C060, #009A4E) !important;
-        color: #050810 !important;
+        /* "Get Started" gradient from the template */
+        background: linear-gradient(90deg, #8A2387, #E94057, #F27121) !important;
+        color: #FFFFFF !important;
         border: none !important;
         border-radius: 10px !important;
         font-family: 'Comfortaa', sans-serif !important;
@@ -233,25 +238,25 @@ st.markdown("""
         font-size: 0.85rem !important;
         padding: 0.5rem 1.2rem !important;
         transition: 0.2s ease !important;
-        box-shadow: 0 0 12px rgba(0,200,96,0.2) !important;
+        box-shadow: 0 0 15px rgba(233, 64, 87, 0.35) !important;
     }
     .stButton > button:hover {
-        background: linear-gradient(135deg, #00E676, #00C060) !important;
-        box-shadow: 0 0 20px rgba(0,230,118,0.3) !important;
+        background: linear-gradient(90deg, #A82E8A, #F54A62, #FC8132) !important;
+        box-shadow: 0 0 25px rgba(233, 64, 87, 0.55) !important;
         transform: translateY(-1px);
     }
 
     /* ====== METRICS ====== */
     [data-testid="stMetric"] {
-        background: #0D1520 !important;
-        border: 1px solid rgba(255,255,255,0.06) !important;
+        background: #221340 !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
         border-radius: 12px !important;
         padding: 0.8rem 1rem !important;
     }
     [data-testid="stMetricLabel"] {
         font-family: 'Comfortaa', monospace !important;
         font-size: 0.6rem !important;
-        color: #4A5A70 !important;
+        color: #9481B5 !important;
         letter-spacing: 1.2px !important;
         text-transform: uppercase !important;
     }
@@ -259,28 +264,28 @@ st.markdown("""
         font-family: 'Comfortaa', sans-serif !important;
         font-weight: 700 !important;
         font-size: 1.8rem !important;
-        color: #00E676 !important;
+        color: #00F0FF !important;
     }
 
     /* ====== EXPANDERS ====== */
     [data-testid="stExpander"] {
-        background: #0A1018 !important;
-        border: 1px solid rgba(255,255,255,0.06) !important;
+        background: #1C0F37 !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
         border-radius: 12px !important;
         overflow: hidden;
     }
     [data-testid="stExpander"] summary {
         font-family: 'Comfortaa', sans-serif !important;
         font-weight: 500 !important;
-        color: #7A8FAA !important;
+        color: #D0C4EA !important;
     }
     [data-testid="stExpander"] summary:hover {
-        color: #00E676 !important;
+        color: #00F0FF !important;
     }
 
     /* ====== PROGRESS BAR ====== */
     [data-testid="stProgressBar"] > div > div {
-        background: linear-gradient(90deg, #00E676, #00B4D8) !important;
+        background: linear-gradient(90deg, #00F0FF, #E94057) !important;
         border-radius: 999px !important;
     }
     [data-testid="stProgressBar"] > div {
@@ -292,130 +297,91 @@ st.markdown("""
     .stCaption, [data-testid="stCaptionContainer"] {
         font-family: 'Comfortaa', monospace !important;
         font-size: 0.68rem !important;
-        color: #4A5A70 !important;
+        color: #7A66A3 !important;
     }
 
     /* ====== ALERTS ====== */
     .stSuccess > div {
-        background: rgba(0,230,120,0.07) !important;
-        border-left: 3px solid #00E676 !important;
+        background: rgba(0, 240, 255, 0.08) !important;
+        border-left: 3px solid #00F0FF !important;
         border-radius: 8px !important;
-        color: #A0E0B0 !important;
+        color: #A0F4FF !important;
     }
     .stInfo > div {
-        background: rgba(0,180,216,0.07) !important;
-        border-left: 3px solid #00B4D8 !important;
+        background: rgba(233, 64, 87, 0.08) !important;
+        border-left: 3px solid #E94057 !important;
         border-radius: 8px !important;
     }
     .stWarning > div {
-        background: rgba(255,160,0,0.07) !important;
-        border-left: 3px solid #FFA000 !important;
+        background: rgba(242, 113, 33, 0.08) !important;
+        border-left: 3px solid #F27121 !important;
         border-radius: 8px !important;
     }
     .stError > div {
-        background: rgba(255,60,60,0.07) !important;
+        background: rgba(255, 60, 60, 0.08) !important;
         border-left: 3px solid #FF3C3C !important;
         border-radius: 8px !important;
     }
 
     /* ====== AUDIO INPUT ====== */
     .stAudioInput > div {
-        background: #0D1520 !important;
-        border: 1px solid rgba(0,230,120,0.13) !important;
+        background: #221340 !important;
+        border: 1px solid rgba(0, 240, 255, 0.15) !important;
         border-radius: 12px !important;
     }
 
     /* ====== DIVIDER ====== */
     hr {
         border: none !important;
-        border-top: 1px solid rgba(255,255,255,0.06) !important;
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
         margin: 2rem 0 !important;
     }
 
     /* ====== PAGE LINK ====== */
     [data-testid="stPageLink"] {
-        background: #0D1520 !important;
-        border: 1px solid rgba(0,230,120,0.13) !important;
+        background: #221340 !important;
+        border: 1px solid rgba(0, 240, 255, 0.15) !important;
         border-radius: 12px !important;
         transition: 0.2s !important;
     }
     [data-testid="stPageLink"]:hover {
-        border-color: rgba(0,230,120,0.35) !important;
-        box-shadow: 0 0 16px rgba(0,230,120,0.08) !important;
+        border-color: rgba(233, 64, 87, 0.5) !important;
+        box-shadow: 0 0 16px rgba(233, 64, 87, 0.2) !important;
     }
 
     /* ====== SCROLLBAR ====== */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #050810; }
+    ::-webkit-scrollbar-track { background: #180D2E; }
     ::-webkit-scrollbar-thumb {
-        background: rgba(0,230,120,0.2);
+        background: rgba(0, 240, 255, 0.25);
         border-radius: 3px;
     }
     ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0,230,120,0.4);
+        background: rgba(0, 240, 255, 0.5);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ========== MATPLOTLIB GLOBAL STYLE ==========
 plt.rcParams.update({
-    'figure.facecolor': '#0A1018',
-    'axes.facecolor': '#0D1520',
-    'axes.edgecolor': '#1E2A3A',
-    'axes.labelcolor': '#5A6A85',
-    'axes.titlecolor': '#A0B0D0',
+    'figure.facecolor': '#180D2E', /* Deep violet matching stApp */
+    'axes.facecolor': '#221340',   /* Slightly lighter card background */
+    'axes.edgecolor': '#3A2463',
+    'axes.labelcolor': '#9481B5',
+    'axes.titlecolor': '#D0C4EA',
     'axes.titlesize': 11,
     'axes.labelsize': 9,
-    'xtick.color': '#3A4A60',
-    'ytick.color': '#3A4A60',
+    'xtick.color': '#65508F',
+    'ytick.color': '#65508F',
     'xtick.labelsize': 8,
     'ytick.labelsize': 8,
-    'grid.color': '#1A2535',
+    'grid.color': '#3A2463',
     'grid.linestyle': '--',
     'grid.alpha': 0.5,
-    'text.color': '#7A8FAA',
+    'text.color': '#A695C9',
     'font.family': 'monospace',
     'lines.linewidth': 1.4,
 })
-
-# ========== HERO HEADER ==========
-st.markdown("""
-<div class="hero-banner">
-    <span class="hero-tagline">🎤 Interactive Audio Lab</span>
-    <div class="hero-title">Voice <span class="green">Lab</span></div>
-    <p class="hero-desc">
-        Jelajahi dunia <strong style="color:#C8D0E0">audio processing</strong> secara interaktif —
-        dari gelombang sintetik sampai pengenalan suara berbasis MFCC + DTW.
-        Rekam, bandingkan, dan rasakan sendiri cara komputer "mendengar".
-    </p>
-    <div class="waveform-deco">
-        <span style="height:8px;  animation-delay:0s"></span>
-        <span style="height:22px; animation-delay:0.10s"></span>
-        <span style="height:36px; animation-delay:0.20s"></span>
-        <span style="height:14px; animation-delay:0.30s"></span>
-        <span style="height:44px; animation-delay:0.40s"></span>
-        <span style="height:26px; animation-delay:0.50s"></span>
-        <span style="height:38px; animation-delay:0.60s"></span>
-        <span style="height:12px; animation-delay:0.70s"></span>
-        <span style="height:30px; animation-delay:0.80s"></span>
-        <span style="height:46px; animation-delay:0.90s"></span>
-        <span style="height:18px; animation-delay:1.00s"></span>
-        <span style="height:32px; animation-delay:0.05s"></span>
-        <span style="height:42px; animation-delay:0.15s"></span>
-        <span style="height:10px; animation-delay:0.25s"></span>
-        <span style="height:28px; animation-delay:0.35s"></span>
-        <span style="height:40px; animation-delay:0.45s"></span>
-        <span style="height:20px; animation-delay:0.55s"></span>
-        <span style="height:34px; animation-delay:0.65s"></span>
-        <span style="height:16px; animation-delay:0.75s"></span>
-        <span style="height:48px; animation-delay:0.85s"></span>
-        <span style="height:24px; animation-delay:0.95s"></span>
-        <span style="height:38px; animation-delay:0.08s"></span>
-        <span style="height:12px; animation-delay:0.18s"></span>
-        <span style="height:44px; animation-delay:0.28s"></span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
 
 # ========== BAGIAN 1: APA ITU AUDIO? ==========
 st.markdown('<div class="section-pill">📡 Bab 01</div>', unsafe_allow_html=True)
