@@ -420,29 +420,24 @@ st.markdown('<p style="color:#5A6A85; font-size:.9rem; margin-bottom:1.2rem">Atu
 
 col_p1, col_p2, col_p3, col_p4 = st.columns(4)
 with col_p1:
-    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-    st.markdown("**Sample Rate (Hz)**")
+    st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Sample Rate (Hz)</div>', unsafe_allow_html=True)
     sample_rate = st.selectbox("SR", [8000, 16000, 22050, 44100], index=1, label_visibility="collapsed")
     st.caption("Sampel per detik")
-    st.markdown('</div>', unsafe_allow_html=True)
+
 with col_p2:
-    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-    st.markdown("**Durasi (detik)**")
+    st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Durasi (detik)</div>', unsafe_allow_html=True)
     duration = st.number_input("Dur", min_value=0.5, max_value=10.0, value=3.0, step=0.5, label_visibility="collapsed")
     st.caption("Potongan awal file")
-    st.markdown('</div>', unsafe_allow_html=True)
+
 with col_p3:
-    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-    st.markdown("**Jumlah MFCC**")
+    st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Jumlah MFCC</div>', unsafe_allow_html=True)
     n_mfcc = st.number_input("MFCC", min_value=5, max_value=40, value=20, step=1, label_visibility="collapsed")
     st.caption("Koefisien per frame")
-    st.markdown('</div>', unsafe_allow_html=True)
+
 with col_p4:
-    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-    st.markdown("**Maks File**")
+    st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Maks File</div>', unsafe_allow_html=True)
     max_per_cat = st.number_input("MaxF", min_value=10, max_value=200, value=40, step=10, label_visibility="collapsed")
     st.caption("Per kategori")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # PARAMETER REDUKSI UNTUK KLASIFIKASI
@@ -454,21 +449,19 @@ st.markdown('<p style="color:#5A6A85; font-size:.9rem; margin-bottom:1.2rem">Pil
 
 col_red_ml1, col_red_ml2 = st.columns(2)
 with col_red_ml1:
-    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-    st.markdown("**Metode Reduksi untuk Klasifikasi**")
+    st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Metode Reduksi (Klasifikasi)</div>', unsafe_allow_html=True)
     reduction_method_ml = st.selectbox(
         "Metode reduksi (sama dengan visualisasi atau berbeda?)",
         options=["Sama dengan visualisasi", "PCA", "t-SNE", "UMAP"],
         index=0,
-        help="Jika pilih 'Sama dengan visualisasi', maka metode yang dipilih di Langkah 5 akan digunakan. Jika pilih metode lain, akan override."
+        label_visibility="collapsed"
     )
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.caption("Jika 'Sama dengan visualisasi', akan mengikuti Langkah 5.")
+
 with col_red_ml2:
-    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-    st.markdown("**Jumlah Dimensi**")
-    n_components_ml = st.slider("Dimensi hasil reduksi (2–30)", min_value=2, max_value=30, value=10, step=1)
+    st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Jumlah Dimensi</div>', unsafe_allow_html=True)
+    n_components_ml = st.slider("Dimensi hasil reduksi (2–30)", min_value=2, max_value=30, value=10, step=1, label_visibility="collapsed")
     st.caption("Semakin kecil dimensi, semakin besar kompresi fitur.")
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # 4. STEP-BY-STEP: CONTOH FILE (Step 1 waveform)
