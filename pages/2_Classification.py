@@ -525,173 +525,210 @@ except Exception as e:
 # ─────────────────────────────────────────────
 st.markdown("---")
 st.markdown('<div class="spill">🌐 Langkah 5</div>', unsafe_allow_html=True)
-st.header("Pilih Metode Reduksi Dimensi (Visualisasi)")
+st.header("Pilih Metode Reduksi & Visualisasi")
 
-if "reduction_method" not in st.session_state:
-    st.session_state.reduction_method = "UMAP" if UMAP_AVAILABLE else "PCA"
-
-methods = []
+# Membuat dictionary opsi agar tampilannya lebih rapi dan informatif
+methods_dict = {
+    "PCA": "📉 PCA (Linear, Cepat & Sederhana)",
+    "t-SNE": "🌀 t-SNE (Akurat untuk Klaster Lokal)"
+}
 if UMAP_AVAILABLE:
-    methods.append(("📊 UMAP", "UMAP", "Menjaga struktur lokal + global. Cepat & akurat."))
-methods.append(("📉 PCA", "PCA", "Linear, cepat, bagus sebagai baseline."))
-methods.append(("🌀 t-SNE", "t-SNE", "Menjaga klaster lokal, lambat pada data besar."))
+    methods_dict["UMAP"] = "📊 UMAP (Sangat Akurat, Cepat, Struktur Lokal+Global)"
 
-def select_method(m):
-    st.session_state.reduction_method = m
+st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Pilih Metode Proyeksi 3D</div>', unsafe_allow_html=True)
 
-cols_red = st.columns(len(methods))
-for col, (label, key, desc) in zip(cols_red, methods):
-    is_active = st.session_state.reduction_method == key
-    box_cls = "red-box active" if is_active else "red-box"
-    with col:
-        st.markdown(f"""
-        <div class="{box_cls}">
-            <div style="font-size:1.4rem; margin-bottom:.4rem">{label.split()[0]}</div>
-            <div style="font-family:'Comfortaa',sans-serif;font-weight:700;font-size:.95rem;color:{'#00E676' if is_active else '#E0EAF8'};margin-bottom:.4rem">{key}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#3A4A60;line-height:1.5">{desc}</div>
-            {'<div style="margin-top:.6rem;font-family:JetBrains Mono,monospace;font-size:.6rem;color:#00E676;letter-spacing:1px">✓ TERPILIH</div>' if is_active else ''}
-        </div>
-        """, unsafe_allow_html=True)
-        if not is_active:
-            if st.button(f"Pilih {key}", key=f"sel_{key}"):
-                select_method(key)
-                st.rerun()
-        else:
-            st.button(f"✓ {key}", key=f"sel_{key}_active", disabled=True)
+# Radio button modern sebagai ganti kotak HTML yang error
+selected_method_key = st.radio(
+    "Metode Visualisasi",
+    options=list(methods_dict.keys()),
+    format_func=lambda x: methods_dict[x],
+    horizontal=True,
+    label_visibility="collapsed"
+)
+st.session_state.reduction_method = selected_method_key
 
 # ─────────────────────────────────────────────
-# 6. TOMBOL PROSES & KLASIFIKASI
+# 6. TOMBOL PROSES & TAMPILAN HASIL (DALAM FRAGMENT)
 # ─────────────────────────────────────────────
 st.markdown("---")
 st.markdown('<div class="spill">🚀 Langkah 6</div>', unsafe_allow_html=True)
-st.header("Proses & Klasifikasi")
+st.header("Proses & Hitung Akurasi")
 
-st.markdown(f"""
-<div class="card" style="margin-bottom:1.2rem">
-  <p style="color:#5A6A85;font-size:.9rem;margin:0;line-height:1.8">
-    Parameter aktif:
-    <span style="color:#C8D0E0">SR={sample_rate} Hz</span> &nbsp;·&nbsp;
-    <span style="color:#C8D0E0">Durasi={duration}s</span> &nbsp;·&nbsp;
-    <span style="color:#C8D0E0">MFCC={n_mfcc}</span> &nbsp;·&nbsp;
-    <span style="color:#C8D0E0">Metode Visualisasi={st.session_state.reduction_method}</span> &nbsp;·&nbsp;
-    <span style="color:#C8D0E0">Kategori={', '.join(selected_cats)}</span>
-  </p>
+# Membungkus proses ini dalam fragment agar loadingnya LOKAL
+@st.fragment
+def proses_ml_fragment():
+    st.markdown(f"""
+    <div class="card" style="margin-bottom:1.2rem">
+      <p style="color:#5A6A85;font-size:.9rem;margin:0;line-height:1.8">
+        Konfigurasi siap dieksekusi:
+        <span style="color:#C8D0E0">SR={sample_rate} Hz</span> &nbsp;·&nbsp;
+        <span style="color:#C8D0E0">Durasi={duration}s</span> &nbsp;·&nbsp;
+        <span style="color:#C8D0E0">MFCC={n_mfcc}</span> &nbsp;·&nbsp;
+        <span style="color:#C8D0E0">Metode Viz={st.session_state.reduction_method}</span>
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_run, _ = st.columns([3, 5])
+    with col_run:
+        run_btn = st.button("⚡ Eksekusi Model & Visualisasi 3D", key="run_analysis", use_container_width=True)
+
+    # Hanya berjalan saat tombol diklik
+    if run_btn:
+        with st.spinner("⏳ Memproses audio, mengekstrak MFCC, dan melatih AI..."):
+            
+            # 1. Batasi file sesuai input (Max File per kategori)
+            sampled_frames = []
+            for cat in selected_cats:
+                cat_rows = filtered_meta[filtered_meta['category'] == cat]
+                n_take = min(len(cat_rows), max_per_cat)
+                sampled_frames.append(cat_rows.sample(n_take, random_state=42))
+            limited_meta = pd.concat(sampled_frames, ignore_index=True)
+
+            limited_audio = [Path("data/ESC-50-master/audio") / row['filename'] for _, row in limited_meta.iterrows()]
+            n_proc = len(limited_meta)
+
+            # 2. Ekstraksi Fitur MFCC dengan Progress Bar Lokal
+            prog = st.progress(0, text=f"Mengekstrak fitur dari {n_proc} file...")
+            features, labels = [], []
+            for i, (fpath, row) in enumerate(zip(limited_audio, (r for _, r in limited_meta.iterrows()))):
+                try:
+                    y_f, _ = librosa.load(str(fpath), sr=sample_rate, duration=duration)
+                    if len(y_f) > 0:
+                        mfcc = librosa.feature.mfcc(y=y_f, sr=sample_rate, n_mfcc=n_mfcc)
+                        feat = np.concatenate([np.mean(mfcc, axis=1), np.std(mfcc, axis=1)])
+                        features.append(feat)
+                        labels.append(row['category'])
+                except Exception:
+                    pass
+                prog.progress((i + 1) / n_proc)
+            prog.empty() # Sembunyikan progress bar jika sudah selesai
+
+            if len(features) < 10:
+                st.error("Gagal diproses. Pastikan dataset ESC-50 ada di folder yang benar.")
+                return
+
+            X = np.array(features)
+            y_labels = np.array(labels)
+            scaler = StandardScaler()
+            X_norm = scaler.fit_transform(X)
+
+            # 3. Reduksi Dimensi untuk Visualisasi 3D
+            method_viz = st.session_state.reduction_method
+            if method_viz == "UMAP" and UMAP_AVAILABLE:
+                n_neighbors_viz = min(15, len(X_norm) - 2)
+                reducer_viz = umap.UMAP(n_components=3, random_state=42, n_neighbors=n_neighbors_viz, min_dist=0.1)
+            elif method_viz == "PCA":
+                reducer_viz = PCA(n_components=3)
+            else:
+                perp = min(30, len(X_norm) - 1)
+                reducer_viz = TSNE(n_components=3, perplexity=perp, random_state=42)
+            
+            X_3d = reducer_viz.fit_transform(X_norm)
+
+            # 4. Reduksi Dimensi untuk Pelatihan AI (Machine Learning)
+            method_ml = method_viz if reduction_method_ml == "Sama dengan visualisasi" else reduction_method_ml
+            if method_ml == "UMAP" and UMAP_AVAILABLE:
+                n_neighbors_ml = min(15, len(X_norm) - 2)
+                reducer_ml = umap.UMAP(n_components=n_components_ml, random_state=42, n_neighbors=n_neighbors_ml, min_dist=0.1)
+            elif method_ml == "PCA":
+                reducer_ml = PCA(n_components=n_components_ml)
+            elif method_ml == "t-SNE":
+                perp = min(30, len(X_norm) - 1)
+                reducer_ml = TSNE(n_components=min(n_components_ml, 3), perplexity=perp, random_state=42)
+            else:
+                reducer_ml = PCA(n_components=n_components_ml)
+            
+            X_ml = reducer_ml.fit_transform(X_norm)
+
+            # 5. Latih 3 Model Machine Learning
+            X_tr, X_te, y_tr, y_te = train_test_split(X_ml, y_labels, test_size=0.2, random_state=42, stratify=y_labels)
+            knn = KNeighborsClassifier(n_neighbors=5); knn.fit(X_tr, y_tr)
+            rf  = RandomForestClassifier(n_estimators=100, random_state=42); rf.fit(X_tr, y_tr)
+            svm = SVC(kernel='rbf', random_state=42); svm.fit(X_tr, y_tr)
+            acc_knn = accuracy_score(y_te, knn.predict(X_te))
+            acc_rf  = accuracy_score(y_te, rf.predict(X_te))
+            acc_svm = accuracy_score(y_te, svm.predict(X_te))
+
+            # ─────────────────────────────────────────────
+            # MUNCULKAN HASIL LANGSUNG DI BAWAH TOMBOL
+            # ─────────────────────────────────────────────
+            st.markdown("---")
+            st.markdown('<div class="spill">📊 Hasil Klasifikasi</div>', unsafe_allow_html=True)
+            st.header("Perbandingan Akurasi Model AI")
+            
+            best_acc = max(acc_knn, acc_rf, acc_svm)
+            col_m1, col_m2, col_m3 = st.columns(3)
+            models = [("k-NN", "k=5, 5 tetangga terdekat", acc_knn, col_m1),
+                      ("Random Forest", "100 pohon keputusan", acc_rf, col_m2),
+                      ("SVM (RBF)", "Support Vector, kernel radial", acc_svm, col_m3)]
+
+            for name, desc, acc, col in models:
+                is_best = abs(acc - best_acc) < 1e-9
+                card_cls = "model-card best" if is_best else "model-card"
+                bar_w = int(acc * 100)
+                bar_color = "#00E676" if is_best else "#00B4D8"
+                with col:
+                    st.markdown(f"""
+                    <div class="{card_cls}">
+                        {'<div style="font-family:JetBrains Mono,monospace; font-size:.6rem; color:#00E676; letter-spacing:2px; margin-bottom:.5rem">🏆 TERBAIK</div>' if is_best else ''}
+                        <div style="font-family:'Comfortaa',sans-serif; font-weight:700; font-size:1.05rem; color:#E0EAF8; margin-bottom:.2rem">{name}</div>
+                        <div style="font-family:'JetBrains Mono',monospace; font-size:.65rem; color:#3A4A60; margin-bottom:.8rem">{desc}</div>
+                        <div style="font-family:'Comfortaa',sans-serif; font-weight:800; font-size:2rem; color:{bar_color}; margin-bottom:.6rem">{acc*100:.1f}%</div>
+                        <div style="background:rgba(255,255,255,.05); border-radius:999px; height:6px; overflow:hidden">
+                            <div style="width:{bar_w}%; height:100%; background:linear-gradient(90deg,{bar_color},{bar_color}88); border-radius:999px; transition:width .8s ease"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            best_name = [n for n,_,a,_ in models if abs(a-best_acc)<1e-9][0]
+            st.success(f"🏆 Sistem merekomendasikan **{best_name}** sebagai algoritma paling cerdas dengan akurasi **{best_acc*100:.1f}%** untuk data ini.")
+
+            st.markdown("---")
+            st.markdown('<div class="spill">🌐 Visualisasi 3D</div>', unsafe_allow_html=True)
+            st.header("Ruang Dimensi Klaster Suara")
+
+            df_plot = pd.DataFrame({
+                'x': X_3d[:, 0], 'y': X_3d[:, 1], 'z': X_3d[:, 2],
+                'Kategori': y_labels,
+                'File': [Path(f).name for f in limited_audio[:len(y_labels)]]
+            })
+
+            fig3d = px.scatter_3d(
+                df_plot, x='x', y='y', z='z', color='Kategori',
+                hover_data=['File'],
+                title=f"Proyeksi {method_viz} — {n_proc} file audio",
+                opacity=0.75, height=700,
+                color_discrete_sequence=px.colors.qualitative.Vivid
+            )
+            fig3d.update_traces(marker=dict(size=3.5))
+            fig3d.update_layout(
+                paper_bgcolor='#060A12', plot_bgcolor='#060A12',
+                font=dict(family='JetBrains Mono, monospace', color='#7A8FAA', size=11),
+                scene=dict(
+                    bgcolor='#0A1018',
+                    xaxis=dict(gridcolor='#1A2535', title=f"{method_viz} 1"),
+                    yaxis=dict(gridcolor='#1A2535', title=f"{method_viz} 2"),
+                    zaxis=dict(gridcolor='#1A2535', title=f"{method_viz} 3"),
+                ),
+                legend=dict(bgcolor='rgba(10,16,24,.8)', bordercolor='rgba(255,255,255,.08)', borderwidth=1)
+            )
+            st.plotly_chart(fig3d, width='stretch')
+
+# Panggil fungsi fragment di sini
+proses_ml_fragment()
+
+# ─────────────────────────────────────────────
+# FOOTER HALAMAN
+# ─────────────────────────────────────────────
+st.markdown("---")
+st.markdown("""
+<div style="text-align:center;padding:.8rem 0">
+    <span style="font-family:'JetBrains Mono',monospace; font-size:.6rem; color:#3A4A60; letter-spacing:3px; text-transform:uppercase">
+        Sound Lab — Audio ML Playground · ESC-50 Dataset
+    </span>
 </div>
 """, unsafe_allow_html=True)
-
-col_run, _ = st.columns([2, 5])
-with col_run:
-    st.markdown('<div class="cta-btn">', unsafe_allow_html=True)
-    run_btn = st.button("⚡ Proses & Hitung Akurasi", key="run_analysis")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-if "results_ready" not in st.session_state:
-    st.session_state.results_ready = False
-
-if run_btn:
-    st.session_state.results_ready = False
-
-    # Batasi file per kategori sesuai max_per_cat
-    sampled_frames = []
-    for cat in selected_cats:
-        cat_rows = filtered_meta[filtered_meta['category'] == cat]
-        n_take = min(len(cat_rows), max_per_cat)
-        sampled_frames.append(cat_rows.sample(n_take, random_state=42))
-    limited_meta = pd.concat(sampled_frames, ignore_index=True)
-
-    limited_audio = [
-        Path("data/ESC-50-master/audio") / row['filename']
-        for _, row in limited_meta.iterrows()
-    ]
-
-    n_proc = len(limited_meta)
-    st.info(f"Memproses {n_proc} file audio...")
-
-    # Ekstraksi MFCC
-    prog = st.progress(0, text="Ekstraksi MFCC...")
-    features = []
-    labels = []
-    for i, (fpath, row) in enumerate(zip(limited_audio, (r for _, r in limited_meta.iterrows()))):
-        try:
-            y_f, _ = librosa.load(str(fpath), sr=sample_rate, duration=duration)
-            if len(y_f) == 0:
-                raise ValueError("Audio kosong")
-            mfcc = librosa.feature.mfcc(y=y_f, sr=sample_rate, n_mfcc=n_mfcc)
-            feat = np.concatenate([np.mean(mfcc, axis=1), np.std(mfcc, axis=1)])
-            features.append(feat)
-            labels.append(row['category'])
-        except Exception:
-            pass
-        prog.progress((i + 1) / n_proc)
-    prog.empty()
-
-    if len(features) < 10:
-        st.error(f"Hanya {len(features)} file berhasil diproses (minimal 10). Periksa path file ESC-50 atau coba tambah kategori.")
-        st.stop()
-
-    X = np.array(features)
-    y_labels = np.array(labels)
-    scaler = StandardScaler()
-    X_norm = scaler.fit_transform(X)
-
-    # Reduksi untuk visualisasi 3D (tetap 3 komponen)
-    method_viz = st.session_state.reduction_method
-    with st.spinner(f"Menjalankan {method_viz} untuk visualisasi 3D..."):
-        if method_viz == "UMAP" and UMAP_AVAILABLE:
-            n_neighbors_viz = min(15, len(X_norm) - 2)
-            reducer_viz = umap.UMAP(n_components=3, random_state=42, n_neighbors=n_neighbors_viz, min_dist=0.1)
-        elif method_viz == "PCA":
-            reducer_viz = PCA(n_components=3)
-        else:
-            perp = min(30, len(X_norm) - 1)
-            reducer_viz = TSNE(n_components=3, perplexity=perp, random_state=42)
-        X_3d = reducer_viz.fit_transform(X_norm)
-
-    # Reduksi untuk klasifikasi (jumlah komponen sesuai pilihan)
-    if reduction_method_ml == "Sama dengan visualisasi":
-        method_ml = method_viz
-    else:
-        method_ml = reduction_method_ml
-
-    with st.spinner(f"Menjalankan {method_ml} reduksi ke {n_components_ml} dimensi untuk klasifikasi..."):
-        if method_ml == "UMAP" and UMAP_AVAILABLE:
-            n_neighbors_ml = min(15, len(X_norm) - 2)
-            reducer_ml = umap.UMAP(n_components=n_components_ml, random_state=42, n_neighbors=n_neighbors_ml, min_dist=0.1)
-        elif method_ml == "PCA":
-            reducer_ml = PCA(n_components=n_components_ml)
-        elif method_ml == "t-SNE":
-            perp = min(30, len(X_norm) - 1)
-            actual_comp = min(n_components_ml, 3) # t-SNE tidak bisa dimensi tinggi
-            if n_components_ml > 3:
-                st.warning("t-SNE hanya mendukung hingga 3 dimensi. Menggunakan 3 komponen.")
-            reducer_ml = TSNE(n_components=actual_comp, perplexity=perp, random_state=42)
-        else:
-            reducer_ml = PCA(n_components=n_components_ml)
-        X_ml = reducer_ml.fit_transform(X_norm)
-
-    # Klasifikasi pada fitur tereduksi
-    with st.spinner("Melatih model klasifikasi pada fitur tereduksi..."):
-        X_tr, X_te, y_tr, y_te = train_test_split(X_ml, y_labels, test_size=0.2, random_state=42, stratify=y_labels)
-        knn = KNeighborsClassifier(n_neighbors=5); knn.fit(X_tr, y_tr)
-        rf  = RandomForestClassifier(n_estimators=100, random_state=42); rf.fit(X_tr, y_tr)
-        svm = SVC(kernel='rbf', random_state=42); svm.fit(X_tr, y_tr)
-        acc_knn = accuracy_score(y_te, knn.predict(X_te))
-        acc_rf  = accuracy_score(y_te, rf.predict(X_te))
-        acc_svm = accuracy_score(y_te, svm.predict(X_te))
-
-    st.session_state.X_norm    = X_norm
-    st.session_state.X_3d      = X_3d
-    st.session_state.y_labels  = y_labels
-    st.session_state.limited_meta = limited_meta
-    st.session_state.limited_audio = limited_audio
-    st.session_state.acc_knn   = acc_knn
-    st.session_state.acc_rf    = acc_rf
-    st.session_state.acc_svm   = acc_svm
-    st.session_state.n_proc    = n_proc
-    st.session_state.method_used = method_viz
-    st.session_state.method_ml  = method_ml
-    st.session_state.n_comp_ml  = n_components_ml
-    st.session_state.results_ready = True
 
 # ─────────────────────────────────────────────
 # 7. TAMPILKAN HASIL (jika sudah diproses)
