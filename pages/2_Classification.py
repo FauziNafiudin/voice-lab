@@ -533,26 +533,41 @@ except Exception as e:
 st.markdown("---")
 st.markdown('<div class="spill">🌐 Langkah 5</div>', unsafe_allow_html=True)
 st.header("Pilih Metode Reduksi & Visualisasi")
+st.markdown('<p style="color:#5A6A85; font-size:.9rem; margin-bottom:1.2rem">Pilih metode proyeksi 3D di bawah ini. Tombol yang sedang aktif akan memiliki tanda centang (✅).</p>', unsafe_allow_html=True)
 
-# Membuat dictionary opsi agar tampilannya lebih rapi dan informatif
-methods_dict = {
-    "PCA": "📉 PCA (Linear, Cepat & Sederhana)",
-    "t-SNE": "🌀 t-SNE (Akurat untuk Klaster Lokal)"
-}
-if UMAP_AVAILABLE:
-    methods_dict["UMAP"] = "📊 UMAP (Sangat Akurat, Cepat, Struktur Lokal+Global)"
+# Set nilai default jika belum ada
+if "reduction_method" not in st.session_state:
+    st.session_state.reduction_method = "UMAP" if UMAP_AVAILABLE else "PCA"
 
-st.markdown('<div style="border-left: 3px solid #00E676; padding-left: 0.6rem; margin-bottom: 0.4rem; color: #E0EAF8; font-weight: 600;">Pilih Metode Proyeksi 3D</div>', unsafe_allow_html=True)
+# Membuat 3 kolom sejajar
+col_m1, col_m2, col_m3 = st.columns(3)
 
-# Radio button modern sebagai ganti kotak HTML yang error
-selected_method_key = st.radio(
-    "Metode Visualisasi",
-    options=list(methods_dict.keys()),
-    format_func=lambda x: methods_dict[x],
-    horizontal=True,
-    label_visibility="collapsed"
-)
-st.session_state.reduction_method = selected_method_key
+with col_m1:
+    if UMAP_AVAILABLE:
+        # Jika UMAP sedang dipilih, tampilkan centang di teks tombolnya
+        lbl = "✅ 📊 UMAP (Terpilih)" if st.session_state.reduction_method == "UMAP" else "📊 Pilih UMAP"
+        if st.button(lbl, use_container_width=True, key="btn_umap"):
+            st.session_state.reduction_method = "UMAP"
+            st.rerun()
+        # Keterangan diletakkan di bawah tombol agar rapi
+        st.markdown('<div style="text-align:center; font-family:\'JetBrains Mono\',monospace; font-size:0.7rem; color:#5A6A85; padding-top:0.3rem; line-height:1.5">Menjaga struktur lokal + global.<br>Sangat Cepat & Akurat.</div>', unsafe_allow_html=True)
+    else:
+        st.button("❌ UMAP (Error)", disabled=True, use_container_width=True)
+        st.markdown('<div style="text-align:center; font-family:\'JetBrains Mono\',monospace; font-size:0.7rem; color:#5A6A85; padding-top:0.3rem">Modul umap-learn tidak tersedia.</div>', unsafe_allow_html=True)
+
+with col_m2:
+    lbl = "✅ 📉 PCA (Terpilih)" if st.session_state.reduction_method == "PCA" else "📉 Pilih PCA"
+    if st.button(lbl, use_container_width=True, key="btn_pca"):
+        st.session_state.reduction_method = "PCA"
+        st.rerun()
+    st.markdown('<div style="text-align:center; font-family:\'JetBrains Mono\',monospace; font-size:0.7rem; color:#5A6A85; padding-top:0.3rem; line-height:1.5">Transformasi linear.<br>Cepat, cocok sebagai baseline.</div>', unsafe_allow_html=True)
+
+with col_m3:
+    lbl = "✅ 🌀 t-SNE (Terpilih)" if st.session_state.reduction_method == "t-SNE" else "🌀 Pilih t-SNE"
+    if st.button(lbl, use_container_width=True, key="btn_tsne"):
+        st.session_state.reduction_method = "t-SNE"
+        st.rerun()
+    st.markdown('<div style="text-align:center; font-family:\'JetBrains Mono\',monospace; font-size:0.7rem; color:#5A6A85; padding-top:0.3rem; line-height:1.5">Menjaga klaster lokal.<br>Lambat pada data besar.</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # 6. TOMBOL PROSES & TAMPILAN HASIL (DALAM FRAGMENT)
