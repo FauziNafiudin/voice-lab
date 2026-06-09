@@ -848,14 +848,6 @@ if st.session_state.get("results_ready", False):
     st.plotly_chart(fig3d, width='stretch')
 
     st.success("Analisis selesai! Ubah kategori, parameter, atau metode reduksi lalu klik **Proses & Hitung Akurasi** untuk membandingkan hasil.")
-else:
-    st.markdown("""
-    <div class="card" style="text-align:center;padding:2rem">
-        <div style="font-size:2rem;margin-bottom:.8rem">⚡</div>
-        <div style="font-family:'Comfortaa',sans-serif; font-weight:700; color:#C8D0E0; font-size:1.1rem; margin-bottom:.4rem">Siap Diproses</div>
-        <div style="font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#3A4A60">Klik tombol <strong style="color:#00E676">Proses & Hitung Akurasi</strong> di atas untuk mulai.</div>
-    </div>
-    """, unsafe_allow_html=True)
 
 st.markdown("---")
 st.markdown("""
